@@ -1,0 +1,36 @@
+From 6c4940a5ada8b6fb63aa9f813ec9eb52c30974c8 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Thu, 5 Feb 2015 09:53:31 -0800
+Subject: [PATCH 55/93] CLOUDERA-BUILD. Remove use of TBinaryProtocol#setReadLength.
+
+This is no longer supported in thrift 0.9.2 and was only used
+defensively. The reason to remove it now is to avoid linker errors when
+the wrong version of thrift is found in the classpath.
+
+Upstream will probably add a dynamic call to this method when it is
+present, but this depends on 0.9.2 so it is not present.
+---
+ .../hadoop/thrift/ThriftBytesWriteSupport.java     |    7 -------
+ 1 files changed, 0 insertions(+), 7 deletions(-)
+
+diff --git a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
+index 844165a..3cac109 100644
+--- a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
++++ b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
+@@ -123,13 +123,6 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
+   private TProtocol protocol(BytesWritable record) {
+     TProtocol protocol = protocolFactory.getProtocol(new TIOStreamTransport(new ByteArrayInputStream(record.getBytes())));
+ 
+-    /* Reduce the chance of OOM when data is corrupted. When readBinary is called on TBinaryProtocol, it reads the length of the binary first,
+-     so if the data is corrupted, it could read a big integer as the length of the binary and therefore causes OOM to happen.
+-     Currently this fix only applies to TBinaryProtocol which has the setReadLength defined.
+-      */
+-    if (protocol instanceof TBinaryProtocol) {
+-      ((TBinaryProtocol)protocol).setReadLength(record.getLength());
+-    }
+     return protocol;
+   }
+ 
+-- 
+1.7.0.4
+

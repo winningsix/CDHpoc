@@ -1,0 +1,42 @@
+From 02642a739fed6b4771309545fca3075d0d2acb88 Mon Sep 17 00:00:00 2001
+From: Maxwell Swadling <maxwell.swadling@nicta.com.au>
+Date: Mon, 12 May 2014 10:55:19 +1000
+Subject: [PATCH 15/93] Fixed hadoop WriteSupportClass loading
+
+---
+ .../java/parquet/hadoop/ParquetOutputFormat.java   |   12 +++---------
+ 1 files changed, 3 insertions(+), 9 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java
+index 59527f1..a8e5c0a 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java
+@@ -38,6 +38,7 @@ import parquet.hadoop.api.WriteSupport;
+ import parquet.hadoop.api.WriteSupport.WriteContext;
+ import parquet.hadoop.codec.CodecConfig;
+ import parquet.hadoop.metadata.CompressionCodecName;
++import parquet.hadoop.util.ConfigurationUtil;
+ 
+ /**
+  * OutputFormat to write to a Parquet file
+@@ -111,15 +112,8 @@ public class ParquetOutputFormat<T> extends FileOutputFormat<Void, T> {
+     if (className == null) {
+       return null;
+     }
+-    try {
+-      final Class<?> writeSupportClass = Class.forName(className);
+-      if (!WriteSupport.class.isAssignableFrom(writeSupportClass)) {
+-        throw new BadConfigurationException("class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS + " is not a subclass of WriteSupport");
+-      }
+-      return writeSupportClass;
+-    } catch (ClassNotFoundException e) {
+-      throw new BadConfigurationException("could not instanciate class " + className + " set in job conf at " + WRITE_SUPPORT_CLASS , e);
+-    }
++    final Class<?> writeSupportClass = ConfigurationUtil.getClassFromConfig(configuration, WRITE_SUPPORT_CLASS, WriteSupport.class);
++    return writeSupportClass;
+   }
+ 
+   public static void setBlockSize(Job job, int blockSize) {
+-- 
+1.7.0.4
+

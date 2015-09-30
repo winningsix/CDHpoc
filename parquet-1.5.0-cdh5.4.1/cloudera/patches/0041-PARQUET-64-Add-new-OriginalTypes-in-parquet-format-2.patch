@@ -1,0 +1,740 @@
+From 1f0b622bb0b3e37ddaf647e46837351f44e2d6c9 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Wed, 1 Oct 2014 13:44:45 -0700
+Subject: [PATCH 41/93] PARQUET-64: Add new OriginalTypes in parquet-format 2.2.0.
+
+This implements the restrictions for those types documented in the parquet-format logical types spec.
+
+This requires a release of parquet-format 2.2.0 with the new types. I'll rebase and update the dependency when it is released.
+
+Author: Ryan Blue <rblue@cloudera.com>
+
+Closes #31 from rdblue/PARQUET-64-add-new-types and squashes the following commits:
+
+10feab9 [Ryan Blue] PARQUET-64: Add new OriginalTypes in parquet-format 2.2.0.
+---
+ .../src/main/java/parquet/schema/OriginalType.java |   16 ++-
+ .../src/main/java/parquet/schema/Types.java        |   27 +++-
+ .../java/parquet/parser/TestParquetParser.java     |   82 ++++++++-
+ .../test/java/parquet/schema/TestTypeBuilders.java |  207 ++++++++++++++++----
+ .../format/converter/ParquetMetadataConverter.java |   57 ++++++
+ .../converter/TestParquetMetadataConverter.java    |    6 +
+ 6 files changed, 346 insertions(+), 49 deletions(-)
+
+diff --git a/parquet-column/src/main/java/parquet/schema/OriginalType.java b/parquet-column/src/main/java/parquet/schema/OriginalType.java
+index 57d01a8..cdd15e7 100644
+--- a/parquet-column/src/main/java/parquet/schema/OriginalType.java
++++ b/parquet-column/src/main/java/parquet/schema/OriginalType.java
+@@ -21,5 +21,19 @@ public enum OriginalType {
+   UTF8,
+   MAP_KEY_VALUE,
+   ENUM,
+-  DECIMAL;
++  DECIMAL,
++  DATE,
++  TIME_MILLIS,
++  TIMESTAMP_MILLIS,
++  UINT_8,
++  UINT_16,
++  UINT_32,
++  UINT_64,
++  INT_8,
++  INT_16,
++  INT_32,
++  INT_64,
++  JSON,
++  BSON,
++  INTERVAL;
+ }
+diff --git a/parquet-column/src/main/java/parquet/schema/Types.java b/parquet-column/src/main/java/parquet/schema/Types.java
+index 06077df..db26459 100644
+--- a/parquet-column/src/main/java/parquet/schema/Types.java
++++ b/parquet-column/src/main/java/parquet/schema/Types.java
+@@ -309,9 +309,11 @@ public class Types {
+       if (originalType != null) {
+         switch (originalType) {
+           case UTF8:
++          case JSON:
++          case BSON:
+             Preconditions.checkState(
+                 primitiveType == PrimitiveTypeName.BINARY,
+-                "UTF8 can only annotate binary fields");
++                originalType.toString() + " can only annotate binary fields");
+             break;
+           case DECIMAL:
+             Preconditions.checkState(
+@@ -338,6 +340,29 @@ public class Types {
+                   " digits (max " + maxPrecision(length) + ")");
+             }
+             break;
++          case DATE:
++          case TIME_MILLIS:
++          case UINT_8:
++          case UINT_16:
++          case UINT_32:
++          case INT_8:
++          case INT_16:
++          case INT_32:
++            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT32,
++                originalType.toString() + " can only annotate INT32");
++            break;
++          case TIMESTAMP_MILLIS:
++          case UINT_64:
++          case INT_64:
++            Preconditions.checkState(primitiveType == PrimitiveTypeName.INT64,
++                originalType.toString() + " can only annotate INT64");
++            break;
++          case INTERVAL:
++            Preconditions.checkState(
++                (primitiveType == PrimitiveTypeName.FIXED_LEN_BYTE_ARRAY) &&
++                (length == 12),
++                "INTERVAL can only annotate FIXED_LEN_BYTE_ARRAY(12)");
++            break;
+           case ENUM:
+             Preconditions.checkState(
+                 primitiveType == PrimitiveTypeName.BINARY,
+diff --git a/parquet-column/src/test/java/parquet/parser/TestParquetParser.java b/parquet-column/src/test/java/parquet/parser/TestParquetParser.java
+index d1fb975..93f9c24 100644
+--- a/parquet-column/src/test/java/parquet/parser/TestParquetParser.java
++++ b/parquet-column/src/test/java/parquet/parser/TestParquetParser.java
+@@ -24,6 +24,7 @@ import static parquet.schema.PrimitiveType.PrimitiveTypeName.INT64;
+ import static parquet.schema.Type.Repetition.OPTIONAL;
+ import static parquet.schema.Type.Repetition.REPEATED;
+ import static parquet.schema.Type.Repetition.REQUIRED;
++import static parquet.schema.OriginalType.*;
+ import static parquet.schema.Types.buildMessage;
+ 
+ import org.junit.Test;
+@@ -31,8 +32,10 @@ import org.junit.Test;
+ import parquet.schema.GroupType;
+ import parquet.schema.MessageType;
+ import parquet.schema.OriginalType;
++import parquet.schema.MessageTypeParser;
+ import parquet.schema.PrimitiveType;
+ import parquet.schema.PrimitiveType.PrimitiveTypeName;
++import parquet.schema.Types;
+ import parquet.schema.Types.MessageTypeBuilder;
+ 
+ public class TestParquetParser {
+@@ -117,7 +120,7 @@ public class TestParquetParser {
+ 
+     MessageType parsed = parseMessageType(message);
+     MessageType expected = buildMessage()
+-        .required(BINARY).as(OriginalType.UTF8).named("string")
++        .required(BINARY).as(UTF8).named("string")
+         .named("StringMessage");
+ 
+     assertEquals(expected, parsed);
+@@ -165,7 +168,7 @@ public class TestParquetParser {
+     MessageType expected = buildMessage()
+         .optionalGroup()
+         .repeatedGroup()
+-        .required(BINARY).as(OriginalType.UTF8).named("key")
++        .required(BINARY).as(UTF8).named("key")
+         .required(INT32).named("value")
+         .named("map")
+         .named("aMap")
+@@ -189,7 +192,7 @@ public class TestParquetParser {
+     MessageType parsed = parseMessageType(message);
+     MessageType expected = buildMessage()
+         .requiredGroup()
+-        .repeated(BINARY).as(OriginalType.UTF8).named("string")
++        .repeated(BINARY).as(UTF8).named("string")
+         .named("aList")
+         .named("Message");
+ 
+@@ -208,7 +211,7 @@ public class TestParquetParser {
+     MessageType parsed = parseMessageType(message);
+     MessageType expected = buildMessage()
+         .required(FIXED_LEN_BYTE_ARRAY).length(4)
+-        .as(OriginalType.DECIMAL).precision(9).scale(2)
++        .as(DECIMAL).precision(9).scale(2)
+         .named("aDecimal")
+         .named("DecimalMessage");
+ 
+@@ -226,7 +229,7 @@ public class TestParquetParser {
+ 
+     MessageType parsed = parseMessageType(message);
+     MessageType expected = buildMessage()
+-        .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
++        .required(BINARY).as(DECIMAL).precision(9).scale(2)
+         .named("aDecimal")
+         .named("DecimalMessage");
+ 
+@@ -235,4 +238,73 @@ public class TestParquetParser {
+     assertEquals(expected, reparsed);
+   }
+ 
++  @Test
++  public void testTimeAnnotations() {
++    String message = "message TimeMessage {" +
++        "  required int32 date (DATE);" +
++        "  required int32 time (TIME_MILLIS);" +
++        "  required int64 timestamp (TIMESTAMP_MILLIS);" +
++        "  required FIXED_LEN_BYTE_ARRAY(12) interval (INTERVAL);" +
++        "}\n";
++
++    MessageType parsed = MessageTypeParser.parseMessageType(message);
++    MessageType expected = Types.buildMessage()
++        .required(INT32).as(DATE).named("date")
++        .required(INT32).as(TIME_MILLIS).named("time")
++        .required(INT64).as(TIMESTAMP_MILLIS).named("timestamp")
++        .required(FIXED_LEN_BYTE_ARRAY).length(12).as(INTERVAL).named("interval")
++        .named("TimeMessage");
++
++    assertEquals(expected, parsed);
++    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
++    assertEquals(expected, reparsed);
++  }
++
++  @Test
++  public void testIntAnnotations() {
++    String message = "message IntMessage {" +
++        "  required int32 i8 (INT_8);" +
++        "  required int32 i16 (INT_16);" +
++        "  required int32 i32 (INT_32);" +
++        "  required int64 i64 (INT_64);" +
++        "  required int32 u8 (UINT_8);" +
++        "  required int32 u16 (UINT_16);" +
++        "  required int32 u32 (UINT_32);" +
++        "  required int64 u64 (UINT_64);" +
++        "}\n";
++
++    MessageType parsed = MessageTypeParser.parseMessageType(message);
++    MessageType expected = Types.buildMessage()
++        .required(INT32).as(INT_8).named("i8")
++        .required(INT32).as(INT_16).named("i16")
++        .required(INT32).as(INT_32).named("i32")
++        .required(INT64).as(INT_64).named("i64")
++        .required(INT32).as(UINT_8).named("u8")
++        .required(INT32).as(UINT_16).named("u16")
++        .required(INT32).as(UINT_32).named("u32")
++        .required(INT64).as(UINT_64).named("u64")
++        .named("IntMessage");
++
++    assertEquals(expected, parsed);
++    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
++    assertEquals(expected, reparsed);
++  }
++
++  @Test
++  public void testEmbeddedAnnotations() {
++    String message = "message EmbeddedMessage {" +
++        "  required binary json (JSON);" +
++        "  required binary bson (BSON);" +
++        "}\n";
++
++    MessageType parsed = MessageTypeParser.parseMessageType(message);
++    MessageType expected = Types.buildMessage()
++        .required(BINARY).as(JSON).named("json")
++        .required(BINARY).as(BSON).named("bson")
++        .named("EmbeddedMessage");
++
++    assertEquals(expected, parsed);
++    MessageType reparsed = MessageTypeParser.parseMessageType(parsed.toString());
++    assertEquals(expected, reparsed);
++  }
+ }
+diff --git a/parquet-column/src/test/java/parquet/schema/TestTypeBuilders.java b/parquet-column/src/test/java/parquet/schema/TestTypeBuilders.java
+index 5309ad8..ee74819 100644
+--- a/parquet-column/src/test/java/parquet/schema/TestTypeBuilders.java
++++ b/parquet-column/src/test/java/parquet/schema/TestTypeBuilders.java
+@@ -6,6 +6,7 @@ import org.junit.Ignore;
+ import org.junit.Test;
+ import parquet.schema.PrimitiveType.PrimitiveTypeName;
+ 
++import static parquet.schema.OriginalType.*;
+ import static parquet.schema.PrimitiveType.PrimitiveTypeName.*;
+ import static parquet.schema.Type.Repetition.*;
+ 
+@@ -42,7 +43,7 @@ public class TestTypeBuilders {
+ 
+   @Test
+   public void testGroupTypeConstruction() {
+-    PrimitiveType f1 = Types.required(BINARY).as(OriginalType.UTF8).named("f1");
++    PrimitiveType f1 = Types.required(BINARY).as(UTF8).named("f1");
+     PrimitiveType f2 = Types.required(INT32).named("f2");
+     PrimitiveType f3 = Types.optional(INT32).named("f3");
+     String name = "group";
+@@ -194,39 +195,39 @@ public class TestTypeBuilders {
+     // int32 primitive type
+     MessageType expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 2), null));
++            DECIMAL, new DecimalMetadata(9, 2), null));
+     MessageType builderType = Types.buildMessage()
+         .required(INT32)
+-            .as(OriginalType.DECIMAL).precision(9).scale(2)
++            .as(DECIMAL).precision(9).scale(2)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+     // int64 primitive type
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(18, 2), null));
++            DECIMAL, new DecimalMetadata(18, 2), null));
+     builderType = Types.buildMessage()
+         .required(INT64)
+-            .as(OriginalType.DECIMAL).precision(18).scale(2)
++            .as(DECIMAL).precision(18).scale(2)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+     // binary primitive type
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 2), null));
++            DECIMAL, new DecimalMetadata(9, 2), null));
+     builderType = Types.buildMessage()
+-        .required(BINARY).as(OriginalType.DECIMAL).precision(9).scale(2)
++        .required(BINARY).as(DECIMAL).precision(9).scale(2)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+     // fixed primitive type
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 4, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 2), null));
++            DECIMAL, new DecimalMetadata(9, 2), null));
+     builderType = Types.buildMessage()
+         .required(FIXED_LEN_BYTE_ARRAY).length(4)
+-            .as(OriginalType.DECIMAL).precision(9).scale(2)
++            .as(DECIMAL).precision(9).scale(2)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+@@ -236,39 +237,39 @@ public class TestTypeBuilders {
+   public void testDecimalAnnotationMissingScale() {
+     MessageType expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, INT32, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 0), null));
++            DECIMAL, new DecimalMetadata(9, 0), null));
+     MessageType builderType = Types.buildMessage()
+         .required(INT32)
+-            .as(OriginalType.DECIMAL).precision(9)
++            .as(DECIMAL).precision(9)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+ 
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, INT64, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 0), null));
++            DECIMAL, new DecimalMetadata(9, 0), null));
+     builderType = Types.buildMessage()
+         .required(INT64)
+-            .as(OriginalType.DECIMAL).precision(9)
++            .as(DECIMAL).precision(9)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+ 
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, BINARY, 0, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 0), null));
++            DECIMAL, new DecimalMetadata(9, 0), null));
+     builderType = Types.buildMessage()
+-        .required(BINARY).as(OriginalType.DECIMAL).precision(9)
++        .required(BINARY).as(DECIMAL).precision(9)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+ 
+     expected = new MessageType("DecimalMessage",
+         new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 7, "aDecimal",
+-            OriginalType.DECIMAL, new DecimalMetadata(9, 0), null));
++            DECIMAL, new DecimalMetadata(9, 0), null));
+     builderType = Types.buildMessage()
+         .required(FIXED_LEN_BYTE_ARRAY).length(7)
+-            .as(OriginalType.DECIMAL).precision(9)
++            .as(DECIMAL).precision(9)
+             .named("aDecimal")
+         .named("DecimalMessage");
+     Assert.assertEquals(expected, builderType);
+@@ -281,7 +282,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(INT32).as(OriginalType.DECIMAL).scale(2)
++                .required(INT32).as(DECIMAL).scale(2)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -291,7 +292,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(INT64).as(OriginalType.DECIMAL).scale(2)
++                .required(INT64).as(DECIMAL).scale(2)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -301,7 +302,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(BINARY).as(OriginalType.DECIMAL).scale(2)
++                .required(BINARY).as(DECIMAL).scale(2)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -312,7 +313,7 @@ public class TestTypeBuilders {
+           public Type call() throws Exception {
+             return Types.buildMessage()
+                 .required(FIXED_LEN_BYTE_ARRAY).length(7)
+-                .as(OriginalType.DECIMAL).scale(2)
++                .as(DECIMAL).scale(2)
+                 .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -327,7 +328,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(INT32).as(OriginalType.DECIMAL).precision(3).scale(4)
++                .required(INT32).as(DECIMAL).precision(3).scale(4)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -337,7 +338,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(INT64).as(OriginalType.DECIMAL).precision(3).scale(4)
++                .required(INT64).as(DECIMAL).precision(3).scale(4)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -347,7 +348,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.buildMessage()
+-                .required(BINARY).as(OriginalType.DECIMAL).precision(3).scale(4)
++                .required(BINARY).as(DECIMAL).precision(3).scale(4)
+                     .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -358,7 +359,7 @@ public class TestTypeBuilders {
+           public Type call() throws Exception {
+             return Types.buildMessage()
+                 .required(FIXED_LEN_BYTE_ARRAY).length(7)
+-                .as(OriginalType.DECIMAL).precision(3).scale(4)
++                .as(DECIMAL).precision(3).scale(4)
+                 .named("aDecimal")
+                 .named("DecimalMessage");
+           }
+@@ -374,7 +375,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.required(FIXED_LEN_BYTE_ARRAY).length(4)
+-                .as(OriginalType.DECIMAL).precision(10).scale(2)
++                .as(DECIMAL).precision(10).scale(2)
+                 .named("aDecimal");
+           }
+         });
+@@ -383,7 +384,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.required(INT32)
+-                .as(OriginalType.DECIMAL).precision(10).scale(2)
++                .as(DECIMAL).precision(10).scale(2)
+                 .named("aDecimal");
+           }
+         });
+@@ -393,7 +394,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.required(FIXED_LEN_BYTE_ARRAY).length(8)
+-                .as(OriginalType.DECIMAL).precision(19).scale(4)
++                .as(DECIMAL).precision(19).scale(4)
+                 .named("aDecimal");
+           }
+         });
+@@ -402,7 +403,7 @@ public class TestTypeBuilders {
+           @Override
+           public Type call() throws Exception {
+             return Types.required(INT64).length(8)
+-                .as(OriginalType.DECIMAL).precision(19).scale(4)
++                .as(DECIMAL).precision(19).scale(4)
+                 .named("aDecimal");
+           }
+         }
+@@ -420,7 +421,7 @@ public class TestTypeBuilders {
+             @Override
+             public Type call() throws Exception {
+               return Types.required(type)
+-                  .as(OriginalType.DECIMAL).precision(9).scale(2)
++                  .as(DECIMAL).precision(9).scale(2)
+                   .named("d");
+             }
+           });
+@@ -428,32 +429,154 @@ public class TestTypeBuilders {
+   }
+ 
+   @Test
+-  public void testUTF8Annotation() {
+-    PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "string", OriginalType.UTF8);
+-    PrimitiveType string = Types.required(BINARY).as(OriginalType.UTF8).named("string");
++  public void testBinaryAnnotations() {
++    OriginalType[] types = new OriginalType[] {
++        UTF8, JSON, BSON};
++    for (final OriginalType logicalType : types) {
++      PrimitiveType expected = new PrimitiveType(REQUIRED, BINARY, "col", logicalType);
++      PrimitiveType string = Types.required(BINARY).as(logicalType).named("col");
++      Assert.assertEquals(expected, string);
++    }
++  }
++
++  @Test
++  public void testBinaryAnnotationsRejectsNonBinary() {
++    OriginalType[] types = new OriginalType[] {
++        UTF8, JSON, BSON};
++    for (final OriginalType logicalType : types) {
++      PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[]{
++          BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT
++      };
++      for (final PrimitiveTypeName type : nonBinary) {
++        assertThrows("Should reject non-binary type: " + type,
++            IllegalStateException.class, new Callable<Type>() {
++              @Override
++              public Type call() throws Exception {
++                return Types.required(type).as(logicalType).named("col");
++              }
++            });
++      }
++      assertThrows("Should reject non-binary type: FIXED_LEN_BYTE_ARRAY",
++          IllegalStateException.class, new Callable<Type>() {
++            @Override
++            public Type call() throws Exception {
++              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
++                  .as(logicalType).named("col");
++            }
++          });
++    }
++  }
++
++  @Test
++  public void testInt32Annotations() {
++    OriginalType[] types = new OriginalType[] {
++        DATE, TIME_MILLIS, UINT_8, UINT_16, UINT_32, INT_8, INT_16, INT_32};
++    for (OriginalType logicalType : types) {
++      PrimitiveType expected = new PrimitiveType(REQUIRED, INT32, "col", logicalType);
++      PrimitiveType date = Types.required(INT32).as(logicalType).named("col");
++      Assert.assertEquals(expected, date);
++    }
++  }
++
++  @Test
++  public void testInt32AnnotationsRejectNonInt32() {
++    OriginalType[] types = new OriginalType[] {
++        DATE, TIME_MILLIS, UINT_8, UINT_16, UINT_32, INT_8, INT_16, INT_32};
++    for (final OriginalType logicalType : types) {
++      PrimitiveTypeName[] nonInt32 = new PrimitiveTypeName[]{
++          BOOLEAN, INT64, INT96, DOUBLE, FLOAT, BINARY
++      };
++      for (final PrimitiveTypeName type : nonInt32) {
++        assertThrows("Should reject non-int32 type: " + type,
++            IllegalStateException.class, new Callable<Type>() {
++              @Override
++              public Type call() throws Exception {
++                return Types.required(type).as(logicalType).named("col");
++              }
++            });
++      }
++      assertThrows("Should reject non-int32 type: FIXED_LEN_BYTE_ARRAY",
++          IllegalStateException.class, new Callable<Type>() {
++            @Override
++            public Type call() throws Exception {
++              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
++                  .as(logicalType).named("col");
++            }
++          });
++    }
++  }
++
++  @Test
++  public void testInt64Annotations() {
++    OriginalType[] types = new OriginalType[] {
++        TIMESTAMP_MILLIS, UINT_64, INT_64};
++    for (OriginalType logicalType : types) {
++      PrimitiveType expected = new PrimitiveType(REQUIRED, INT64, "col", logicalType);
++      PrimitiveType date = Types.required(INT64).as(logicalType).named("col");
++      Assert.assertEquals(expected, date);
++    }
++  }
++
++  @Test
++  public void testInt64AnnotationsRejectNonInt64() {
++    OriginalType[] types = new OriginalType[] {
++        TIMESTAMP_MILLIS, UINT_64, INT_64};
++    for (final OriginalType logicalType : types) {
++      PrimitiveTypeName[] nonInt64 = new PrimitiveTypeName[]{
++          BOOLEAN, INT32, INT96, DOUBLE, FLOAT, BINARY
++      };
++      for (final PrimitiveTypeName type : nonInt64) {
++        assertThrows("Should reject non-int64 type: " + type,
++            IllegalStateException.class, new Callable<Type>() {
++              @Override
++              public Type call() throws Exception {
++                return Types.required(type).as(logicalType).named("col");
++              }
++            });
++      }
++      assertThrows("Should reject non-int64 type: FIXED_LEN_BYTE_ARRAY",
++          IllegalStateException.class, new Callable<Type>() {
++            @Override
++            public Type call() throws Exception {
++              return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
++                  .as(logicalType).named("col");
++            }
++          });
++    }
++  }
++
++  @Test
++  public void testIntervalAnnotation() {
++    PrimitiveType expected = new PrimitiveType(REQUIRED, FIXED_LEN_BYTE_ARRAY, 12, "interval", INTERVAL);
++    PrimitiveType string = Types.required(FIXED_LEN_BYTE_ARRAY).length(12)
++        .as(INTERVAL).named("interval");
+     Assert.assertEquals(expected, string);
+   }
+ 
+   @Test
+-  public void testUTF8AnnotationRejectsNonBinary() {
+-    PrimitiveTypeName[] nonBinary = new PrimitiveTypeName[]{
+-      BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT
++  public void testIntervalAnnotationRejectsNonFixed() {
++    PrimitiveTypeName[] nonFixed = new PrimitiveTypeName[]{
++        BOOLEAN, INT32, INT64, INT96, DOUBLE, FLOAT, BINARY
+     };
+-    for (final PrimitiveTypeName type : nonBinary) {
+-      assertThrows("Should reject non-binary type: " + type,
++    for (final PrimitiveTypeName type : nonFixed) {
++      assertThrows("Should reject non-fixed type: " + type,
+           IllegalStateException.class, new Callable<Type>() {
+             @Override
+             public Type call() throws Exception {
+-              return Types.required(type).as(OriginalType.UTF8).named("string");
++              return Types.required(type).as(INTERVAL).named("interval");
+             }
+           });
+     }
+-    assertThrows("Should reject non-binary type: FIXED_LEN_BYTE_ARRAY",
++  }
++
++  @Test
++  public void testIntervalAnnotationRejectsNonFixed12() {
++    assertThrows("Should reject fixed with length != 12: " + 11,
+         IllegalStateException.class, new Callable<Type>() {
+           @Override
+           public Type call() throws Exception {
+-            return Types.required(FIXED_LEN_BYTE_ARRAY).length(1)
+-                .as(OriginalType.UTF8).named("string");
++            return Types.required(FIXED_LEN_BYTE_ARRAY).length(11)
++                .as(INTERVAL).named("interval");
+           }
+         });
+   }
+diff --git a/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java b/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
+index 4819a28..3024365 100644
+--- a/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
++++ b/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
+@@ -32,6 +32,7 @@ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
++import org.apache.hadoop.io.UTF8;
+ import parquet.Log;
+ import parquet.format.ConvertedType;
+ import parquet.format.ColumnChunk;
+@@ -310,6 +311,34 @@ public class ParquetMetadataConverter {
+         return OriginalType.ENUM;
+       case DECIMAL:
+         return OriginalType.DECIMAL;
++      case DATE:
++        return OriginalType.DATE;
++      case TIME_MILLIS:
++        return OriginalType.TIME_MILLIS;
++      case TIMESTAMP_MILLIS:
++        return OriginalType.TIMESTAMP_MILLIS;
++      case INTERVAL:
++        return OriginalType.INTERVAL;
++      case INT_8:
++        return OriginalType.INT_8;
++      case INT_16:
++        return OriginalType.INT_16;
++      case INT_32:
++        return OriginalType.INT_32;
++      case INT_64:
++        return OriginalType.INT_64;
++      case UINT_8:
++        return OriginalType.UINT_8;
++      case UINT_16:
++        return OriginalType.UINT_16;
++      case UINT_32:
++        return OriginalType.UINT_32;
++      case UINT_64:
++        return OriginalType.UINT_64;
++      case JSON:
++        return OriginalType.JSON;
++      case BSON:
++        return OriginalType.BSON;
+       default:
+         throw new RuntimeException("Unknown converted type " + type);
+     }
+@@ -329,6 +358,34 @@ public class ParquetMetadataConverter {
+         return ConvertedType.ENUM;
+       case DECIMAL:
+         return ConvertedType.DECIMAL;
++      case DATE:
++        return ConvertedType.DATE;
++      case TIME_MILLIS:
++        return ConvertedType.TIME_MILLIS;
++      case TIMESTAMP_MILLIS:
++        return ConvertedType.TIMESTAMP_MILLIS;
++      case INTERVAL:
++        return ConvertedType.INTERVAL;
++      case INT_8:
++        return ConvertedType.INT_8;
++      case INT_16:
++        return ConvertedType.INT_16;
++      case INT_32:
++        return ConvertedType.INT_32;
++      case INT_64:
++        return ConvertedType.INT_64;
++      case UINT_8:
++        return ConvertedType.UINT_8;
++      case UINT_16:
++        return ConvertedType.UINT_16;
++      case UINT_32:
++        return ConvertedType.UINT_32;
++      case UINT_64:
++        return ConvertedType.UINT_64;
++      case JSON:
++        return ConvertedType.JSON;
++      case BSON:
++        return ConvertedType.BSON;
+       default:
+         throw new RuntimeException("Unknown original type " + type);
+      }
+diff --git a/parquet-hadoop/src/test/java/parquet/format/converter/TestParquetMetadataConverter.java b/parquet-hadoop/src/test/java/parquet/format/converter/TestParquetMetadataConverter.java
+index 7cb6d73..85ab53c 100644
+--- a/parquet-hadoop/src/test/java/parquet/format/converter/TestParquetMetadataConverter.java
++++ b/parquet-hadoop/src/test/java/parquet/format/converter/TestParquetMetadataConverter.java
+@@ -115,6 +115,12 @@ public class TestParquetMetadataConverter {
+     for (Type type : Type.values()) {
+       assertEquals(type, c.getType(c.getPrimitive(type)));
+     }
++    for (OriginalType original : OriginalType.values()) {
++      assertEquals(original, c.getOriginalType(c.getConvertedType(original)));
++    }
++    for (ConvertedType converted : ConvertedType.values()) {
++      assertEquals(converted, c.getConvertedType(c.getOriginalType(converted)));
++    }
+   }
+ 
+ }
+-- 
+1.7.0.4
+

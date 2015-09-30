@@ -1,0 +1,449 @@
+From 8078d97ad3e18d8678c5d2b1394bf730c9739342 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 21 Jul 2014 15:36:16 -0700
+Subject: [PATCH 01/93] CLOUDERA-BUILD. Update root POM for CDH packaging.
+
+---
+ parquet-avro/pom.xml                               |    2 +-
+ parquet-cascading/pom.xml                          |    2 +-
+ parquet-column/pom.xml                             |    2 +-
+ parquet-common/pom.xml                             |    2 +-
+ parquet-encoding/pom.xml                           |    2 +-
+ parquet-generator/pom.xml                          |    2 +-
+ parquet-hadoop-bundle/pom.xml                      |    2 +-
+ parquet-hadoop/pom.xml                             |    2 +-
+ parquet-hive-bundle/pom.xml                        |    2 +-
+ .../parquet-hive-0.10-binding/pom.xml              |    2 +-
+ .../parquet-hive-0.12-binding/pom.xml              |    2 +-
+ .../parquet-hive-binding-bundle/pom.xml            |    2 +-
+ .../parquet-hive-binding-factory/pom.xml           |    2 +-
+ .../parquet-hive-binding-interface/pom.xml         |    2 +-
+ parquet-hive/parquet-hive-binding/pom.xml          |    2 +-
+ parquet-hive/parquet-hive-storage-handler/pom.xml  |    2 +-
+ parquet-hive/pom.xml                               |    2 +-
+ parquet-jackson/pom.xml                            |    2 +-
+ parquet-pig-bundle/pom.xml                         |    2 +-
+ parquet-pig/pom.xml                                |    2 +-
+ parquet-protobuf/pom.xml                           |    2 +-
+ parquet-scrooge/pom.xml                            |    2 +-
+ parquet-test-hadoop2/pom.xml                       |    2 +-
+ parquet-thrift/pom.xml                             |    2 +-
+ parquet-tools/pom.xml                              |    2 +-
+ pom.xml                                            |   60 ++++++++++++++------
+ 26 files changed, 67 insertions(+), 43 deletions(-)
+
+diff --git a/parquet-avro/pom.xml b/parquet-avro/pom.xml
+index 5639e82..3e0e489 100644
+--- a/parquet-avro/pom.xml
++++ b/parquet-avro/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-cascading/pom.xml b/parquet-cascading/pom.xml
+index dc942d3..50a54f6 100644
+--- a/parquet-cascading/pom.xml
++++ b/parquet-cascading/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-column/pom.xml b/parquet-column/pom.xml
+index dd0d4e7..9f846c7 100644
+--- a/parquet-column/pom.xml
++++ b/parquet-column/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-common/pom.xml b/parquet-common/pom.xml
+index 3ba0d2c..066b51c 100644
+--- a/parquet-common/pom.xml
++++ b/parquet-common/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-encoding/pom.xml b/parquet-encoding/pom.xml
+index fdc9db4..4165247 100644
+--- a/parquet-encoding/pom.xml
++++ b/parquet-encoding/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-generator/pom.xml b/parquet-generator/pom.xml
+index f6a511f..ccb43fe 100644
+--- a/parquet-generator/pom.xml
++++ b/parquet-generator/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hadoop-bundle/pom.xml b/parquet-hadoop-bundle/pom.xml
+index 3617c0d..598e3f1 100644
+--- a/parquet-hadoop-bundle/pom.xml
++++ b/parquet-hadoop-bundle/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hadoop/pom.xml b/parquet-hadoop/pom.xml
+index f465131..13522bb 100644
+--- a/parquet-hadoop/pom.xml
++++ b/parquet-hadoop/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive-bundle/pom.xml b/parquet-hive-bundle/pom.xml
+index 1a97043..fcf6cf5 100644
+--- a/parquet-hive-bundle/pom.xml
++++ b/parquet-hive-bundle/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/parquet-hive-0.10-binding/pom.xml b/parquet-hive/parquet-hive-binding/parquet-hive-0.10-binding/pom.xml
+index 31e9f02..fddc041 100644
+--- a/parquet-hive/parquet-hive-binding/parquet-hive-0.10-binding/pom.xml
++++ b/parquet-hive/parquet-hive-binding/parquet-hive-0.10-binding/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive-binding</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/parquet-hive-0.12-binding/pom.xml b/parquet-hive/parquet-hive-binding/parquet-hive-0.12-binding/pom.xml
+index 1c7e017..b389388 100644
+--- a/parquet-hive/parquet-hive-binding/parquet-hive-0.12-binding/pom.xml
++++ b/parquet-hive/parquet-hive-binding/parquet-hive-0.12-binding/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive-binding</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/parquet-hive-binding-bundle/pom.xml b/parquet-hive/parquet-hive-binding/parquet-hive-binding-bundle/pom.xml
+index 2865240..a8c36d7 100644
+--- a/parquet-hive/parquet-hive-binding/parquet-hive-binding-bundle/pom.xml
++++ b/parquet-hive/parquet-hive-binding/parquet-hive-binding-bundle/pom.xml
+@@ -17,7 +17,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive-binding</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/parquet-hive-binding-factory/pom.xml b/parquet-hive/parquet-hive-binding/parquet-hive-binding-factory/pom.xml
+index 479815c..9c60e83 100644
+--- a/parquet-hive/parquet-hive-binding/parquet-hive-binding-factory/pom.xml
++++ b/parquet-hive/parquet-hive-binding/parquet-hive-binding-factory/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive-binding</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/parquet-hive-binding-interface/pom.xml b/parquet-hive/parquet-hive-binding/parquet-hive-binding-interface/pom.xml
+index 60cadfe..d189ab7 100644
+--- a/parquet-hive/parquet-hive-binding/parquet-hive-binding-interface/pom.xml
++++ b/parquet-hive/parquet-hive-binding/parquet-hive-binding-interface/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive-binding</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-binding/pom.xml b/parquet-hive/parquet-hive-binding/pom.xml
+index 3120040..3f5d500 100644
+--- a/parquet-hive/parquet-hive-binding/pom.xml
++++ b/parquet-hive/parquet-hive-binding/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/parquet-hive-storage-handler/pom.xml b/parquet-hive/parquet-hive-storage-handler/pom.xml
+index 89ac04c..7ed1ab8 100644
+--- a/parquet-hive/parquet-hive-storage-handler/pom.xml
++++ b/parquet-hive/parquet-hive-storage-handler/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet-hive</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-hive/pom.xml b/parquet-hive/pom.xml
+index e855262..5edd185 100644
+--- a/parquet-hive/pom.xml
++++ b/parquet-hive/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-jackson/pom.xml b/parquet-jackson/pom.xml
+index 70a212e..8475b23 100644
+--- a/parquet-jackson/pom.xml
++++ b/parquet-jackson/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-pig-bundle/pom.xml b/parquet-pig-bundle/pom.xml
+index 6087c96..40c956b 100644
+--- a/parquet-pig-bundle/pom.xml
++++ b/parquet-pig-bundle/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-pig/pom.xml b/parquet-pig/pom.xml
+index a858ca6..fcafd72 100644
+--- a/parquet-pig/pom.xml
++++ b/parquet-pig/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-protobuf/pom.xml b/parquet-protobuf/pom.xml
+index eae32f9..4571faf 100644
+--- a/parquet-protobuf/pom.xml
++++ b/parquet-protobuf/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-scrooge/pom.xml b/parquet-scrooge/pom.xml
+index a541414..b3f75bd 100644
+--- a/parquet-scrooge/pom.xml
++++ b/parquet-scrooge/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-test-hadoop2/pom.xml b/parquet-test-hadoop2/pom.xml
+index 17c7440..d2fbcd8 100644
+--- a/parquet-test-hadoop2/pom.xml
++++ b/parquet-test-hadoop2/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-thrift/pom.xml b/parquet-thrift/pom.xml
+index e58e6d5..32adcf8 100644
+--- a/parquet-thrift/pom.xml
++++ b/parquet-thrift/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/parquet-tools/pom.xml b/parquet-tools/pom.xml
+index 0e20f7e..75d72e2 100644
+--- a/parquet-tools/pom.xml
++++ b/parquet-tools/pom.xml
+@@ -3,7 +3,7 @@
+     <groupId>com.twitter</groupId>
+     <artifactId>parquet</artifactId>
+     <relativePath>../pom.xml</relativePath>
+-    <version>1.5.0</version>
++    <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   </parent>
+ 
+   <modelVersion>4.0.0</modelVersion>
+diff --git a/pom.xml b/pom.xml
+index b09d5c7..e9e4d34 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,9 +1,16 @@
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+   <modelVersion>4.0.0</modelVersion>
+ 
++  <parent>
++    <groupId>com.cloudera.cdh</groupId>
++    <artifactId>cdh-root</artifactId>
++    <version>5.2.0-SNAPSHOT</version>
++    <relativePath></relativePath><!-- no parent resolution -->
++  </parent>
++
+   <groupId>com.twitter</groupId>
+   <artifactId>parquet</artifactId>
+-  <version>1.5.0</version>
++  <version>1.5.0-cdh5.2.0-SNAPSHOT</version>
+   <packaging>pom</packaging>
+ 
+   <name>Parquet MR</name>
+@@ -38,30 +45,47 @@
+     </developer>
+   </developers>
+ 
+-  <distributionManagement>
+-    <snapshotRepository>
+-      <id>sonatype-nexus-snapshots</id>
+-      <name>Sonatype OSS</name>
+-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+-    </snapshotRepository>
++  <repositories>
+     <repository>
+-      <id>sonatype-nexus-staging</id>
+-      <name>Nexus Release Repository</name>
+-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
++      <id>cdh.releases.repo</id>
++      <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
++      <name>CDH Releases Repository</name>
++      <snapshots>
++      <enabled>false</enabled>
++      </snapshots>
+     </repository>
+-  </distributionManagement>
+-
+-  <repositories>
+     <repository>
+-      <id>sonatype-nexus-snapshots</id>
+-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
++      <id>cdh.snapshots.repo</id>
++      <url>https://repository.cloudera.com/content/repositories/snapshots</url>
++      <name>CDH Snapshots Repository</name>
++      <snapshots>
++      <enabled>true</enabled>
++      </snapshots>
+       <releases>
+-        <enabled>false</enabled>
++      <enabled>false</enabled>
+       </releases>
++    </repository>
++    <repository>
++      <id>datanucleus</id>
++      <url>http://www.datanucleus.org/downloads/maven2</url>
++      <name>Datanucleus</name>
+       <snapshots>
+-        <enabled>true</enabled>
++      <enabled>false</enabled>
+       </snapshots>
+-     </repository>
++    </repository>
++    <repository>
++      <id>java.net repository</id>
++      <url>http://download.java.net/maven/2</url>
++      <snapshots>
++      <enabled>false</enabled>
++    </snapshots>
++    </repository>
++    <repository>
++      <id>cdh.thirdparty.repo</id>
++      <url>https://repository.cloudera.com/content/repositories/third-party</url>
++      <name>Cloudera Third Party Repository</name>
++      <snapshots><enabled>false</enabled></snapshots>
++    </repository>
+   </repositories>
+ 
+   <!-- this is needed for maven-thrift-plugin, would like to remove this.
+-- 
+1.7.0.4
+

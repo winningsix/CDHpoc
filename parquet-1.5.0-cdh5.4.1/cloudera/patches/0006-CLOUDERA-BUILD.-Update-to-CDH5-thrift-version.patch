@@ -1,0 +1,42 @@
+From 45b6975cfc6485bdb6046bd639b393bd63b713db Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sun, 27 Jul 2014 15:02:07 -0700
+Subject: [PATCH 06/93] CLOUDERA-BUILD. Update to CDH5 thrift version.
+
+---
+ parquet-thrift/pom.xml |    6 ++++++
+ pom.xml                |    1 +
+ 2 files changed, 7 insertions(+), 0 deletions(-)
+
+diff --git a/parquet-thrift/pom.xml b/parquet-thrift/pom.xml
+index fd33c00..4232642 100644
+--- a/parquet-thrift/pom.xml
++++ b/parquet-thrift/pom.xml
+@@ -96,6 +96,12 @@
+       <version>3.4</version>
+       <scope>test</scope>
+     </dependency>
++    <dependency>
++      <groupId>org.apache.thrift</groupId>
++      <artifactId>libthrift</artifactId>
++      <version>${thrift.version}</version>
++      <scope>provided</scope>
++    </dependency>
+ 
+   </dependencies>
+ 
+diff --git a/pom.xml b/pom.xml
+index 5027827..8c2bc01 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -114,6 +114,7 @@
+     <previous.version>1.4.0</previous.version>
+     <thrift.executable>thrift</thrift.executable>
+     <pig.version>${cdh.pig.version}</pig.version>
++    <thrift.version>${cdh.thrift.version}</thrift.version>
+   </properties>
+ 
+   <modules>
+-- 
+1.7.0.4
+

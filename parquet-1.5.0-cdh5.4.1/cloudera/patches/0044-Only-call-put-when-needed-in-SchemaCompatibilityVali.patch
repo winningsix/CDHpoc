@@ -1,0 +1,35 @@
+From 058c5010f1bc820173d73471d96c1602cd42ee3a Mon Sep 17 00:00:00 2001
+From: Alex Levenson <alexlevenson@twitter.com>
+Date: Wed, 30 Jul 2014 13:49:00 -0700
+Subject: [PATCH 44/93] Only call put() when needed in SchemaCompatibilityValidator#validateColumn()
+
+This is some minor cleanup suggested by @tsdeng
+
+Author: Alex Levenson <alexlevenson@twitter.com>
+
+Closes #24 from isnotinvain/alexlevenson/columnTypesEncountered and squashes the following commits:
+
+7f05d90 [Alex Levenson] Only call put() when needed in SchemaCompatibilityValidator#validateColumn()
+---
+ .../predicate/SchemaCompatibilityValidator.java    |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-column/src/main/java/parquet/filter2/predicate/SchemaCompatibilityValidator.java b/parquet-column/src/main/java/parquet/filter2/predicate/SchemaCompatibilityValidator.java
+index da0e122..4c43f30 100644
+--- a/parquet-column/src/main/java/parquet/filter2/predicate/SchemaCompatibilityValidator.java
++++ b/parquet-column/src/main/java/parquet/filter2/predicate/SchemaCompatibilityValidator.java
+@@ -152,7 +152,10 @@ public class SchemaCompatibilityValidator implements FilterPredicate.Visitor<Voi
+           + " was provided with different types in the same predicate."
+           + " Found both: (" + alreadySeen + ", " + column.getColumnType() + ")");
+     }
+-    columnTypesEncountered.put(path, column.getColumnType());
++
++    if (alreadySeen == null) {
++      columnTypesEncountered.put(path, column.getColumnType());
++    }
+ 
+     ColumnDescriptor descriptor = getColumnDescriptor(path);
+ 
+-- 
+1.7.0.4
+

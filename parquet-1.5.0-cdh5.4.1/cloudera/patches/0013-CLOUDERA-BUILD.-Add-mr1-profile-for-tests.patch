@@ -1,0 +1,29 @@
+From b13f38116fc26aac625625cecec4dd0bef9ba24d Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 8 Sep 2014 15:43:12 -0700
+Subject: [PATCH 13/93] CLOUDERA-BUILD. Add mr1 profile for tests.
+
+---
+ pom.xml |    6 ++++++
+ 1 files changed, 6 insertions(+), 0 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 5522cd1..7118070 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -414,6 +414,12 @@
+ 
+   <profiles>
+     <profile>
++      <id>mr1</id>
++      <properties>
++        <hadoop.version>${cdh.mr1.version}</hadoop.version>
++      </properties>
++    </profile>
++    <profile>
+       <id>update-github-site</id>
+       <reporting>
+         <plugins>
+-- 
+1.7.0.4
+

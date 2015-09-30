@@ -1,0 +1,134 @@
+From 576088da7de58e23dfdc575cc3de186fa09bc539 Mon Sep 17 00:00:00 2001
+From: Colin Marc <colinmarc@gmail.com>
+Date: Thu, 25 Sep 2014 16:45:56 -0700
+Subject: [PATCH 39/93] PARQUET-96: fill out some missing methods on parquet.example classes
+
+I'm slightly embarrassed to say that we use these, and we'd really like to stop needing a fork, so here we are.
+
+Author: Colin Marc <colinmarc@gmail.com>
+
+Closes #59 from colinmarc/missing-group-methods and squashes the following commits:
+
+af8ea08 [Colin Marc] fill out some missing methods on parquet.example classes
+
+Conflicts:
+	parquet-column/src/main/java/parquet/example/data/GroupValueSource.java
+	parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java
+Resolution:
+    Method additions, not real conflicts.
+---
+ .../src/main/java/parquet/example/data/Group.java  |    6 +++++
+ .../parquet/example/data/GroupValueSource.java     |   18 ++++++++++++++++
+ .../parquet/example/data/simple/SimpleGroup.java   |   22 +++++++++++++++++++-
+ 3 files changed, 45 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-column/src/main/java/parquet/example/data/Group.java b/parquet-column/src/main/java/parquet/example/data/Group.java
+index d8e0de3..bb04623 100644
+--- a/parquet-column/src/main/java/parquet/example/data/Group.java
++++ b/parquet-column/src/main/java/parquet/example/data/Group.java
+@@ -56,6 +56,10 @@ abstract public class Group extends GroupValueSource {
+     add(getType().getFieldIndex(field), value);
+   }
+ 
++  public void add(String field, Group value) {
++    add(getType().getFieldIndex(field), value);
++  }
++
+   public Group addGroup(String field) {
+     if (DEBUG) logger.debug("add group "+field+" to "+getType().getName());
+     return addGroup(getType().getFieldIndex(field));
+@@ -81,6 +85,8 @@ abstract public class Group extends GroupValueSource {
+ 
+   abstract public void add(int fieldIndex, double value);
+ 
++  abstract public void add(int fieldIndex, Group value);
++
+   abstract public Group addGroup(int fieldIndex);
+ 
+   abstract public Group getGroup(int fieldIndex, int index);
+diff --git a/parquet-column/src/main/java/parquet/example/data/GroupValueSource.java b/parquet-column/src/main/java/parquet/example/data/GroupValueSource.java
+index 71c0644..3cf6e6d 100644
+--- a/parquet-column/src/main/java/parquet/example/data/GroupValueSource.java
++++ b/parquet-column/src/main/java/parquet/example/data/GroupValueSource.java
+@@ -36,6 +36,18 @@ abstract public class GroupValueSource {
+     return getInteger(getType().getFieldIndex(field), index);
+   }
+ 
++  public long getLong(String field, int index) {
++    return getLong(getType().getFieldIndex(field), index);
++  }
++
++  public double getDouble(String field, int index) {
++    return getDouble(getType().getFieldIndex(field), index);
++  }
++
++  public float getFloat(String field, int index) {
++    return getFloat(getType().getFieldIndex(field), index);
++  }
++
+   public boolean getBoolean(String field, int index) {
+     return getBoolean(getType().getFieldIndex(field), index);
+   }
+@@ -56,6 +68,12 @@ abstract public class GroupValueSource {
+ 
+   abstract public int getInteger(int fieldIndex, int index);
+ 
++  abstract public long getLong(int fieldIndex, int index);
++
++  abstract public double getDouble(int fieldIndex, int index);
++
++  abstract public float getFloat(int fieldIndex, int index);
++
+   abstract public boolean getBoolean(int fieldIndex, int index);
+ 
+   abstract public Binary getBinary(int fieldIndex, int index);
+diff --git a/parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java b/parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java
+index 0c19148..55f9ce3 100644
+--- a/parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java
++++ b/parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java
+@@ -72,7 +72,7 @@ public class SimpleGroup extends Group {
+   @Override
+   public Group addGroup(int fieldIndex) {
+     SimpleGroup g = new SimpleGroup(schema.getType(fieldIndex).asGroupType());
+-    data[fieldIndex].add(g);
++    add(fieldIndex, g);
+     return g;
+   }
+ 
+@@ -127,6 +127,21 @@ public class SimpleGroup extends Group {
+   }
+ 
+   @Override
++  public long getLong(int fieldIndex, int index) {
++    return ((LongValue)getValue(fieldIndex, index)).getLong();
++  }
++
++  @Override
++  public double getDouble(int fieldIndex, int index) {
++    return ((DoubleValue)getValue(fieldIndex, index)).getDouble();
++  }
++
++  @Override
++  public float getFloat(int fieldIndex, int index) {
++    return ((FloatValue)getValue(fieldIndex, index)).getFloat();
++  }
++
++  @Override
+   public boolean getBoolean(int fieldIndex, int index) {
+     return ((BooleanValue)getValue(fieldIndex, index)).getBoolean();
+   }
+@@ -197,6 +212,11 @@ public class SimpleGroup extends Group {
+   }
+ 
+   @Override
++  public void add(int fieldIndex, Group value) {
++    data[fieldIndex].add(value);
++  }
++
++  @Override
+   public GroupType getType() {
+     return schema;
+   }
+-- 
+1.7.0.4
+

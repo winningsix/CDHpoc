@@ -1,0 +1,977 @@
+From 5ad4b3fb2ba259d2f6ebe1db0d1e5a9934139d95 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Mon, 9 Mar 2015 12:59:45 -0700
+Subject: [PATCH 88/93] PARQUET-111: Update headers in parquet-tools, remove NOTICE.
+
+This commit update the copyright headers in parquet-tools from ARRIS to the standard Apache license header. This needs ARRIS or @wesleypeck to "provide written permission for the ASF to make such removal or relocation of the notices". Please +1 this commit, or submit a PR with similar changes. Thanks!
+
+Author: Ryan Blue <blue@apache.org>
+
+Closes #114 from rdblue/PARQUET-111-parquet-tools-changes and squashes the following commits:
+
+87eb75f [Ryan Blue] PARQUET-111: Update headers in parquet-tools, remove NOTICE.
+---
+ parquet-tools/NOTICE                               |    2 -
+ parquet-tools/README.md                            |   31 +++++++++---------
+ parquet-tools/pom.xml                              |   32 +++++++++---------
+ parquet-tools/src/main/assembly/assembly.xml       |   33 ++++++++++---------
+ .../src/main/java/parquet/tools/Main.java          |   31 ++++++++++--------
+ .../parquet/tools/command/ArgsOnlyCommand.java     |   31 ++++++++++--------
+ .../java/parquet/tools/command/CatCommand.java     |   31 ++++++++++--------
+ .../main/java/parquet/tools/command/Command.java   |   31 ++++++++++--------
+ .../java/parquet/tools/command/DumpCommand.java    |   31 ++++++++++--------
+ .../java/parquet/tools/command/HeadCommand.java    |   31 ++++++++++--------
+ .../main/java/parquet/tools/command/Registry.java  |   31 ++++++++++--------
+ .../parquet/tools/command/ShowMetaCommand.java     |   31 ++++++++++--------
+ .../parquet/tools/command/ShowSchemaCommand.java   |   31 ++++++++++--------
+ .../java/parquet/tools/read/SimpleReadSupport.java |   31 ++++++++++--------
+ .../main/java/parquet/tools/read/SimpleRecord.java |   31 ++++++++++--------
+ .../parquet/tools/read/SimpleRecordConverter.java  |   31 ++++++++++--------
+ .../tools/read/SimpleRecordMaterializer.java       |   31 ++++++++++--------
+ .../java/parquet/tools/util/MetadataUtils.java     |   31 ++++++++++--------
+ .../java/parquet/tools/util/PrettyPrintWriter.java |   31 ++++++++++--------
+ parquet-tools/src/main/scripts/parquet-cat         |   23 ++++++++------
+ parquet-tools/src/main/scripts/parquet-dump        |   23 ++++++++------
+ parquet-tools/src/main/scripts/parquet-head        |   23 ++++++++------
+ parquet-tools/src/main/scripts/parquet-meta        |   23 ++++++++------
+ parquet-tools/src/main/scripts/parquet-schema      |   23 ++++++++------
+ parquet-tools/src/main/scripts/parquet-tools       |   23 ++++++++------
+ 25 files changed, 382 insertions(+), 319 deletions(-)
+ delete mode 100644 parquet-tools/NOTICE
+
+diff --git a/parquet-tools/NOTICE b/parquet-tools/NOTICE
+deleted file mode 100644
+index 90c6867..0000000
+--- a/parquet-tools/NOTICE
++++ /dev/null
+@@ -1,2 +0,0 @@
+-Parquet Tools
+-Copyright 2013 ARRIS, Inc. 
+diff --git a/parquet-tools/README.md b/parquet-tools/README.md
+index 4f2ac6f..984d329 100644
+--- a/parquet-tools/README.md
++++ b/parquet-tools/README.md
+@@ -1,19 +1,20 @@
+ <!--
+-  -
+-  - Copyright 2013 ARRIS, Inc.
+-  -
+-  - Licensed under the Apache License, Version 2.0 (the "License");
+-  - you may not use this file except in compliance with the License.
+-  - You may obtain a copy of the License at
+-  -
+-  -   http://www.apache.org/licenses/LICENSE-2.0
+-  -
+-  - Unless required by applicable law or agreed to in writing, software
+-  - distributed under the License is distributed on an "AS IS" BASIS,
+-  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-  - See the License for the specific language governing permissions and
+-  - limitations under the License.
+-  -
++  ~ Licensed to the Apache Software Foundation (ASF) under one
++  ~ or more contributor license agreements.  See the NOTICE file
++  ~ distributed with this work for additional information
++  ~ regarding copyright ownership.  The ASF licenses this file
++  ~ to you under the Apache License, Version 2.0 (the
++  ~ "License"); you may not use this file except in compliance
++  ~ with the License.  You may obtain a copy of the License at
++  ~
++  ~   http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing,
++  ~ software distributed under the License is distributed on an
++  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++  ~ KIND, either express or implied.  See the License for the
++  ~ specific language governing permissions and limitations
++  ~ under the License.
+   -->
+ 
+ Parquet Tools
+diff --git a/parquet-tools/pom.xml b/parquet-tools/pom.xml
+index 0cd772d..963e58a 100644
+--- a/parquet-tools/pom.xml
++++ b/parquet-tools/pom.xml
+@@ -1,21 +1,21 @@
+ <!--
+-  -
+-  - Copyright 2013 ARRIS, Inc.
+-  -
+-  - Licensed under the Apache License, Version 2.0 (the "License");
+-  - you may not use this file except in compliance with the License.
+-  - You may obtain a copy of the License at
+-  -
+-  -   http://www.apache.org/licenses/LICENSE-2.0
+-  -
+-  - Unless required by applicable law or agreed to in writing, software
+-  - distributed under the License is distributed on an "AS IS" BASIS,
+-  - WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-  - See the License for the specific language governing permissions and
+-  - limitations under the License.
+-  -
++  ~ Licensed to the Apache Software Foundation (ASF) under one
++  ~ or more contributor license agreements.  See the NOTICE file
++  ~ distributed with this work for additional information
++  ~ regarding copyright ownership.  The ASF licenses this file
++  ~ to you under the Apache License, Version 2.0 (the
++  ~ "License"); you may not use this file except in compliance
++  ~ with the License.  You may obtain a copy of the License at
++  ~
++  ~   http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing,
++  ~ software distributed under the License is distributed on an
++  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++  ~ KIND, either express or implied.  See the License for the
++  ~ specific language governing permissions and limitations
++  ~ under the License.
+   -->
+-
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+   <parent>
+     <groupId>com.twitter</groupId>
+diff --git a/parquet-tools/src/main/assembly/assembly.xml b/parquet-tools/src/main/assembly/assembly.xml
+index b0c2a7e..de239a9 100644
+--- a/parquet-tools/src/main/assembly/assembly.xml
++++ b/parquet-tools/src/main/assembly/assembly.xml
+@@ -1,20 +1,21 @@
+ <!--
+-
+-    Copyright 2013 ARRIS, Inc.
+-
+-    Licensed under the Apache License, Version 2.0 (the "License");
+-    you may not use this file except in compliance with the License.
+-    You may obtain a copy of the License at
+-
+-    http://www.apache.org/licenses/LICENSE-2.0
+-
+-    Unless required by applicable law or agreed to in writing, software
+-    distributed under the License is distributed on an "AS IS" BASIS,
+-    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-    See the License for the specific language governing permissions and
+-    limitations under the License.
+-
+--->
++  ~ Licensed to the Apache Software Foundation (ASF) under one
++  ~ or more contributor license agreements.  See the NOTICE file
++  ~ distributed with this work for additional information
++  ~ regarding copyright ownership.  The ASF licenses this file
++  ~ to you under the Apache License, Version 2.0 (the
++  ~ "License"); you may not use this file except in compliance
++  ~ with the License.  You may obtain a copy of the License at
++  ~
++  ~   http://www.apache.org/licenses/LICENSE-2.0
++  ~
++  ~ Unless required by applicable law or agreed to in writing,
++  ~ software distributed under the License is distributed on an
++  ~ "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++  ~ KIND, either express or implied.  See the License for the
++  ~ specific language governing permissions and limitations
++  ~ under the License.
++  -->
+ <assembly xmlns="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0" 
+   xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+   xsi:schemaLocation="http://maven.apache.org/plugins/maven-assembly-plugin/assembly/1.1.0 http://maven.apache.org/xsd/assembly-1.1.0.xsd">
+diff --git a/parquet-tools/src/main/java/parquet/tools/Main.java b/parquet-tools/src/main/java/parquet/tools/Main.java
+index a75d968..13f9e1f 100644
+--- a/parquet-tools/src/main/java/parquet/tools/Main.java
++++ b/parquet-tools/src/main/java/parquet/tools/Main.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/ArgsOnlyCommand.java b/parquet-tools/src/main/java/parquet/tools/command/ArgsOnlyCommand.java
+index 256f754..5bf8883 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/ArgsOnlyCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/ArgsOnlyCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/CatCommand.java b/parquet-tools/src/main/java/parquet/tools/command/CatCommand.java
+index 3074c6c..f101937 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/CatCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/CatCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/Command.java b/parquet-tools/src/main/java/parquet/tools/command/Command.java
+index 522ddaf..9041a18 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/Command.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/Command.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java b/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
+index eb32057..61a7989 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/HeadCommand.java b/parquet-tools/src/main/java/parquet/tools/command/HeadCommand.java
+index 88e8124..8af3484 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/HeadCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/HeadCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/Registry.java b/parquet-tools/src/main/java/parquet/tools/command/Registry.java
+index 24c908e..d05fcb7 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/Registry.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/Registry.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/ShowMetaCommand.java b/parquet-tools/src/main/java/parquet/tools/command/ShowMetaCommand.java
+index 0e18456..c95070e 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/ShowMetaCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/ShowMetaCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/ShowSchemaCommand.java b/parquet-tools/src/main/java/parquet/tools/command/ShowSchemaCommand.java
+index 1a8963c..6f55b61 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/ShowSchemaCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/ShowSchemaCommand.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.command;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/read/SimpleReadSupport.java b/parquet-tools/src/main/java/parquet/tools/read/SimpleReadSupport.java
+index 822a121..9aa6222 100644
+--- a/parquet-tools/src/main/java/parquet/tools/read/SimpleReadSupport.java
++++ b/parquet-tools/src/main/java/parquet/tools/read/SimpleReadSupport.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.read;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecord.java b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecord.java
+index 905aef2..dd68096 100644
+--- a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecord.java
++++ b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecord.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.read;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordConverter.java b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordConverter.java
+index 2429c47..13c39e4 100644
+--- a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordConverter.java
++++ b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordConverter.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.read;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordMaterializer.java b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordMaterializer.java
+index 1ceed0c..68b159f 100644
+--- a/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordMaterializer.java
++++ b/parquet-tools/src/main/java/parquet/tools/read/SimpleRecordMaterializer.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.read;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/util/MetadataUtils.java b/parquet-tools/src/main/java/parquet/tools/util/MetadataUtils.java
+index e4285b0..7aac81f 100644
+--- a/parquet-tools/src/main/java/parquet/tools/util/MetadataUtils.java
++++ b/parquet-tools/src/main/java/parquet/tools/util/MetadataUtils.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.util;
+ 
+diff --git a/parquet-tools/src/main/java/parquet/tools/util/PrettyPrintWriter.java b/parquet-tools/src/main/java/parquet/tools/util/PrettyPrintWriter.java
+index 03c12f9..54956e3 100644
+--- a/parquet-tools/src/main/java/parquet/tools/util/PrettyPrintWriter.java
++++ b/parquet-tools/src/main/java/parquet/tools/util/PrettyPrintWriter.java
+@@ -1,17 +1,20 @@
+-/**
+- * Copyright 2013 ARRIS, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
++/* 
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ * 
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ * 
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
+  */
+ package parquet.tools.util;
+ 
+diff --git a/parquet-tools/src/main/scripts/parquet-cat b/parquet-tools/src/main/scripts/parquet-cat
+index 74af51f..3460ba5 100755
+--- a/parquet-tools/src/main/scripts/parquet-cat
++++ b/parquet-tools/src/main/scripts/parquet-cat
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ # The name of the top-level script
+diff --git a/parquet-tools/src/main/scripts/parquet-dump b/parquet-tools/src/main/scripts/parquet-dump
+index 298cd20..75e9354 100755
+--- a/parquet-tools/src/main/scripts/parquet-dump
++++ b/parquet-tools/src/main/scripts/parquet-dump
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ # The name of the top-level script
+diff --git a/parquet-tools/src/main/scripts/parquet-head b/parquet-tools/src/main/scripts/parquet-head
+index 2b1ef15..2b4fa20 100755
+--- a/parquet-tools/src/main/scripts/parquet-head
++++ b/parquet-tools/src/main/scripts/parquet-head
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ # The name of the top-level script
+diff --git a/parquet-tools/src/main/scripts/parquet-meta b/parquet-tools/src/main/scripts/parquet-meta
+index c3fc023..6cc7d5b 100755
+--- a/parquet-tools/src/main/scripts/parquet-meta
++++ b/parquet-tools/src/main/scripts/parquet-meta
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ # The name of the top-level script
+diff --git a/parquet-tools/src/main/scripts/parquet-schema b/parquet-tools/src/main/scripts/parquet-schema
+index 07dbd61..59b7e58 100755
+--- a/parquet-tools/src/main/scripts/parquet-schema
++++ b/parquet-tools/src/main/scripts/parquet-schema
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ # The name of the top-level script
+diff --git a/parquet-tools/src/main/scripts/parquet-tools b/parquet-tools/src/main/scripts/parquet-tools
+index afa90ff..bd1e60a 100755
+--- a/parquet-tools/src/main/scripts/parquet-tools
++++ b/parquet-tools/src/main/scripts/parquet-tools
+@@ -1,18 +1,21 @@
+ #!/usr/bin/env bash
+ #
+-# Copyright 2013 ARRIS, Inc.
+-#
+-# Licensed under the Apache License, Version 2.0 (the "License");
+-# you may not use this file except in compliance with the License.
+-# You may obtain a copy of the License at
++# Licensed to the Apache Software Foundation (ASF) under one
++# or more contributor license agreements.  See the NOTICE file
++# distributed with this work for additional information
++# regarding copyright ownership.  The ASF licenses this file
++# to you under the Apache License, Version 2.0 (the
++# "License"); you may not use this file except in compliance
++# with the License.  You may obtain a copy of the License at
+ #
+ #   http://www.apache.org/licenses/LICENSE-2.0
+ #
+-# Unless required by applicable law or agreed to in writing, software
+-# distributed under the License is distributed on an "AS IS" BASIS,
+-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+-# See the License for the specific language governing permissions and
+-# limitations under the License.
++# Unless required by applicable law or agreed to in writing,
++# software distributed under the License is distributed on an
++# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++# KIND, either express or implied.  See the License for the
++# specific language governing permissions and limitations
++# under the License.
+ #
+ 
+ ################################################################################
+-- 
+1.7.0.4
+

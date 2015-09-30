@@ -1,0 +1,32 @@
+From ebaa2f0b651797fa0cc03357aff925991d42b5ce Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Mon, 9 Feb 2015 23:07:35 -0800
+Subject: [PATCH 76/93] PARQUET-164: Add warning when scaling row group sizes.
+
+Author: Ryan Blue <blue@apache.org>
+
+Closes #119 from rdblue/PARQUET-164-add-memory-manager-warning and squashes the following commits:
+
+241144f [Ryan Blue] PARQUET-164: Add warning when scaling row group sizes.
+---
+ .../main/java/parquet/hadoop/MemoryManager.java    |    4 ++++
+ 1 files changed, 4 insertions(+), 0 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/MemoryManager.java b/parquet-hadoop/src/main/java/parquet/hadoop/MemoryManager.java
+index fd399e0..7bb0665 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/MemoryManager.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/MemoryManager.java
+@@ -108,6 +108,10 @@ public class MemoryManager {
+       scale = 1.0;
+     } else {
+       scale = (double) totalMemoryPool / totalAllocations;
++      LOG.warn(String.format(
++          "Total allocation exceeds %.2f%% (%,d bytes) of heap memory\n" +
++          "Scaling row group sizes to %.2f%% for %d writers",
++          100*memoryPoolRatio, totalMemoryPool, 100*scale, writerList.size()));
+     }
+ 
+     int maxColCount = 0;
+-- 
+1.7.0.4
+

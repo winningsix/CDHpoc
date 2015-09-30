@@ -1,0 +1,62 @@
+From 72e1ab916b66942c4d6fcce95dfbdfcb45abd7ff Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Fri, 6 Mar 2015 16:26:20 -0800
+Subject: [PATCH 73/93] CLOUDERA-BUILD. Remove RAT check.
+
+---
+ pom.xml |   39 ---------------------------------------
+ 1 files changed, 0 insertions(+), 39 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 7c8efe7..18f4fc8 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -485,45 +485,6 @@
+           </execution>
+         </executions>
+       </plugin>
+-      <plugin>
+-        <groupId>org.apache.rat</groupId>
+-        <artifactId>apache-rat-plugin</artifactId>
+-        <executions>
+-          <execution>
+-            <phase>test</phase>
+-            <goals>
+-              <goal>check</goal>
+-            </goals>
+-          </execution>
+-        </executions>
+-        <configuration>
+-          <excludes>
+-            <exclude>**/*.parquet</exclude>
+-            <exclude>**/*.avro</exclude>
+-            <exclude>**/*.json</exclude>
+-            <exclude>**/names.txt</exclude> <!-- parquet-cascading test data -->
+-            <exclude>**/*.avsc</exclude>
+-            <exclude>**/*.iml</exclude>
+-            <exclude>**/*.log</exclude>
+-            <exclude>**/*.md.vm</exclude>
+-            <exclude>**/.classpath</exclude>
+-            <exclude>**/.project</exclude>
+-            <exclude>**/.settings/**</exclude>
+-            <exclude>**/build/**</exclude>
+-            <exclude>**/target/**</exclude>
+-            <exclude>.git/**</exclude>
+-            <exclude>.gitignore</exclude>
+-            <exclude>.idea/**</exclude>
+-            <exclude>*/jdiff/*.xml</exclude>
+-            <exclude>.travis.yml</exclude>
+-            <exclude>licenses/**</exclude>
+-            <exclude>protobuf_install/**</exclude>
+-            <exclude>thrift-0.7.0/**</exclude>
+-            <exclude>thrift-0.7.0.tar.gz</exclude>
+-            <exclude>**/dependency-reduced-pom.xml</exclude>
+-          </excludes>
+-        </configuration>
+-      </plugin>
+     </plugins>
+   </build>
+ 
+-- 
+1.7.0.4
+

@@ -1,0 +1,25 @@
+From fa46bde2e360b35ea6a1aa7dbec3478ded7f7b04 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sat, 26 Jul 2014 16:23:15 -0700
+Subject: [PATCH 02/93] CLOUDERA-BUILD. Update to CDH Hadoop version.
+
+---
+ pom.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index e9e4d34..d024457 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -107,7 +107,7 @@
+     <jackson.version>1.9.11</jackson.version>
+     <jackson.package>org.codehaus.jackson</jackson.package>
+     <shade.prefix>parquet</shade.prefix>
+-    <hadoop.version>1.1.0</hadoop.version>
++    <hadoop.version>${cdh.hadoop.version}</hadoop.version>
+     <cascading.version>2.5.3</cascading.version>
+     <parquet.format.version>2.1.0</parquet.format.version>
+     <log4j.version>1.2.17</log4j.version>
+-- 
+1.7.0.4
+

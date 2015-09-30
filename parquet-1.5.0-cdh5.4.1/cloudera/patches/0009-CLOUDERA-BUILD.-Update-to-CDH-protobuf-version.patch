@@ -1,0 +1,37 @@
+From 2be8acb0cf57a628ab5a9c3f0a068f697de3578b Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 28 Jul 2014 18:14:36 -0700
+Subject: [PATCH 09/93] CLOUDERA-BUILD. Update to CDH protobuf version.
+
+---
+ parquet-protobuf/pom.xml |    1 -
+ pom.xml                  |    1 +
+ 2 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-protobuf/pom.xml b/parquet-protobuf/pom.xml
+index 4571faf..f88ee51 100644
+--- a/parquet-protobuf/pom.xml
++++ b/parquet-protobuf/pom.xml
+@@ -13,7 +13,6 @@
+ 
+   <properties>
+     <elephant-bird.version>4.4</elephant-bird.version>
+-    <protobuf.version>2.5.0</protobuf.version>
+   </properties>
+ 
+ 
+diff --git a/pom.xml b/pom.xml
+index e9f860d..e51ceac 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -115,6 +115,7 @@
+     <thrift.executable>thrift</thrift.executable>
+     <pig.version>${cdh.pig.version}</pig.version>
+     <thrift.version>${cdh.thrift.version}</thrift.version>
++    <protobuf.version>${cdh.protobuf.version}</protobuf.version>
+   </properties>
+ 
+   <modules>
+-- 
+1.7.0.4
+

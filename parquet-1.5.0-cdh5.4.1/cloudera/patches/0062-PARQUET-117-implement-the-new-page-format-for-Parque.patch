@@ -1,0 +1,4427 @@
+From 3510d1888daa8cd5227f806025f7ea49648724fa Mon Sep 17 00:00:00 2001
+From: julien <julien@twitter.com>
+Date: Thu, 4 Dec 2014 13:16:11 -0800
+Subject: [PATCH 62/93] PARQUET-117: implement the new page format for Parquet 2.0
+
+The new page format was defined some time ago:
+https://github.com/Parquet/parquet-format/pull/64
+https://github.com/Parquet/parquet-format/issues/44
+The goals are the following:
+ - cut pages on record boundaries to facilitate skipping pages in predicate poush down
+ - read rl and dl independently of data
+ - optionally not compress data
+
+Author: julien <julien@twitter.com>
+
+Closes #75 from julienledem/new_page_format and squashes the following commits:
+
+fbbc23a [julien] make mvn install display output only if it fails
+4189383 [julien] save output lines as travis cuts after 10000
+44d3684 [julien] fix parquet-tools for new page format
+0fb8c15 [julien] Merge branch 'master' into new_page_format
+5880cbb [julien] Merge branch 'master' into new_page_format
+6ee7303 [julien] make parquet.column package not semver compliant
+42f6c9f [julien] add tests and fix bugs
+266302b [julien] fix write path
+4e76369 [julien] read path
+050a487 [julien] fix compilation
+e0e9d00 [julien] better ColumnWriterStore definition
+ecf04ce [julien] remove unnecessary change
+2bc4d01 [julien] first stab at write path for the new page format
+
+Conflicts:
+	.travis.yml
+	pom.xml
+Resolution:
+    Both minor conflicts in content not used for CDH
+---
+ .travis.yml                                        |    9 +-
+ .../main/java/parquet/column/ColumnWriteStore.java |   22 ++
+ .../src/main/java/parquet/column/ColumnWriter.java |   12 -
+ .../java/parquet/column/ParquetProperties.java     |   25 ++
+ .../java/parquet/column/impl/ColumnReaderImpl.java |  143 ++++++++--
+ .../parquet/column/impl/ColumnWriteStoreImpl.java  |  127 ---------
+ .../parquet/column/impl/ColumnWriteStoreV1.java    |  134 +++++++++
+ .../parquet/column/impl/ColumnWriteStoreV2.java    |  163 +++++++++++
+ .../java/parquet/column/impl/ColumnWriterImpl.java |  275 ------------------
+ .../java/parquet/column/impl/ColumnWriterV1.java   |  269 ++++++++++++++++++
+ .../java/parquet/column/impl/ColumnWriterV2.java   |  295 ++++++++++++++++++++
+ .../main/java/parquet/column/page/DataPage.java    |   50 ++++
+ .../main/java/parquet/column/page/DataPageV1.java  |   80 ++++++
+ .../main/java/parquet/column/page/DataPageV2.java  |  138 +++++++++
+ .../java/parquet/column/page/DictionaryPage.java   |   14 +-
+ .../src/main/java/parquet/column/page/Page.java    |  136 +---------
+ .../main/java/parquet/column/page/PageReader.java  |    2 +-
+ .../main/java/parquet/column/page/PageWriter.java  |   34 ++-
+ .../java/parquet/column/values/ValuesWriter.java   |    3 +-
+ .../rle/RunLengthBitPackingHybridDecoder.java      |    7 +-
+ .../rle/RunLengthBitPackingHybridValuesWriter.java |   10 +-
+ .../src/main/java/parquet/io/MessageColumnIO.java  |    3 +
+ .../parquet/column/impl/TestColumnReaderImpl.java  |  105 +++++++
+ .../java/parquet/column/mem/TestMemColumn.java     |   27 +-
+ .../java/parquet/column/mem/TestMemPageStore.java  |    4 +-
+ .../parquet/column/page/mem/MemPageReader.java     |   10 +-
+ .../java/parquet/column/page/mem/MemPageStore.java |    4 +-
+ .../parquet/column/page/mem/MemPageWriter.java     |   29 ++-
+ .../src/test/java/parquet/io/PerfTest.java         |    6 +-
+ .../src/test/java/parquet/io/TestColumnIO.java     |  166 ++++++-----
+ .../src/test/java/parquet/io/TestFiltered.java     |    4 +-
+ .../format/converter/ParquetMetadataConverter.java |   51 +++-
+ .../parquet/hadoop/ColumnChunkPageReadStore.java   |   72 ++++--
+ .../parquet/hadoop/ColumnChunkPageWriteStore.java  |   89 +++----
+ .../hadoop/InternalParquetRecordWriter.java        |   28 +-
+ .../java/parquet/hadoop/ParquetFileReader.java     |   74 ++++--
+ .../hadoop/TestColumnChunkPageWriteStore.java      |  107 +++++++
+ .../java/parquet/hadoop/TestParquetFileWriter.java |    7 +-
+ .../parquet/hadoop/TestParquetWriterNewPage.java   |  117 ++++++++
+ .../test/java/parquet/pig/GenerateIntTestFile.java |  142 ----------
+ .../src/test/java/parquet/pig/GenerateTPCH.java    |  112 --------
+ .../java/parquet/pig/TupleConsumerPerfTest.java    |    8 +-
+ .../parquet/thrift/TestParquetReadProtocol.java    |    4 +-
+ .../java/parquet/tools/command/DumpCommand.java    |   34 ++-
+ pom.xml                                            |    1 +
+ 45 files changed, 2058 insertions(+), 1094 deletions(-)
+ delete mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreImpl.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV1.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV2.java
+ delete mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriterImpl.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriterV1.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/impl/ColumnWriterV2.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/page/DataPage.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/page/DataPageV1.java
+ create mode 100644 parquet-column/src/main/java/parquet/column/page/DataPageV2.java
+ create mode 100644 parquet-column/src/test/java/parquet/column/impl/TestColumnReaderImpl.java
+ create mode 100644 parquet-hadoop/src/test/java/parquet/hadoop/TestColumnChunkPageWriteStore.java
+ create mode 100644 parquet-hadoop/src/test/java/parquet/hadoop/TestParquetWriterNewPage.java
+ delete mode 100644 parquet-pig/src/test/java/parquet/pig/GenerateIntTestFile.java
+ delete mode 100644 parquet-pig/src/test/java/parquet/pig/GenerateTPCH.java
+
+diff --git a/.travis.yml b/.travis.yml
+index e1acf30..ae33a7b 100644
+--- a/.travis.yml
++++ b/.travis.yml
+@@ -5,7 +5,7 @@ before_install:
+   - mkdir protobuf_install
+   - pushd protobuf_install
+   - wget http://protobuf.googlecode.com/files/protobuf-2.5.0.tar.gz
+-  - tar xzvf protobuf-2.5.0.tar.gz
++  - tar xzf protobuf-2.5.0.tar.gz
+   - cd  protobuf-2.5.0
+   - ./configure
+   - make
+@@ -22,3 +22,10 @@ before_install:
+   - ./configure --disable-gen-erl --disable-gen-hs --without-ruby --without-haskell --without-erlang
+   - sudo make install
+   - cd ..
++
++env:
++  - HADOOP_PROFILE=default
++  - HADOOP_PROFILE=hadoop-2
++
++install: mvn install --batch-mode -DskipTests=true -Dmaven.javadoc.skip=true -Dsource.skip=true > mvn_install.log || cat mvn_install.log
++script: mvn test -P $HADOOP_PROFILE
+diff --git a/parquet-column/src/main/java/parquet/column/ColumnWriteStore.java b/parquet-column/src/main/java/parquet/column/ColumnWriteStore.java
+index 9abff4d..4b8121f 100644
+--- a/parquet-column/src/main/java/parquet/column/ColumnWriteStore.java
++++ b/parquet-column/src/main/java/parquet/column/ColumnWriteStore.java
+@@ -33,4 +33,26 @@ public interface ColumnWriteStore {
+    */
+   abstract public void flush();
+ 
++  /**
++   * called to notify of record boundaries
++   */
++  abstract public void endRecord();
++
++  /**
++   * used for information
++   * @return approximate size used in memory
++   */
++  abstract public long getAllocatedSize();
++
++  /**
++   * used to flush row groups to disk
++   * @return approximate size of the buffered encoded binary data
++   */
++  abstract public long getBufferedSize();
++
++  /**
++   * used for debugging pupose
++   * @return a formated string representing memory usage per column
++   */
++  abstract public String memUsageString();
+ }
+diff --git a/parquet-column/src/main/java/parquet/column/ColumnWriter.java b/parquet-column/src/main/java/parquet/column/ColumnWriter.java
+index 1fd7bba..702fe26 100644
+--- a/parquet-column/src/main/java/parquet/column/ColumnWriter.java
++++ b/parquet-column/src/main/java/parquet/column/ColumnWriter.java
+@@ -15,7 +15,6 @@
+  */
+ package parquet.column;
+ 
+-import parquet.column.statistics.Statistics;
+ import parquet.io.api.Binary;
+ 
+ /**
+@@ -81,16 +80,5 @@ public interface ColumnWriter {
+    */
+   void writeNull(int repetitionLevel, int definitionLevel);
+ 
+-  /**
+-   * Flushes the underlying store. This should be called when there are no
+-   * remaining triplets to be written.
+-   */
+-  void flush();
+-
+-  /**
+-   * used to decide when to write a page or row group
+-   * @return the number of bytes of memory used to buffer the current data
+-   */
+-  long getBufferedSizeInMemory();
+ }
+ 
+diff --git a/parquet-column/src/main/java/parquet/column/ParquetProperties.java b/parquet-column/src/main/java/parquet/column/ParquetProperties.java
+index aea02ad..dc7774f 100644
+--- a/parquet-column/src/main/java/parquet/column/ParquetProperties.java
++++ b/parquet-column/src/main/java/parquet/column/ParquetProperties.java
+@@ -4,6 +4,9 @@ import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
+ import static parquet.column.Encoding.PLAIN;
+ import static parquet.column.Encoding.PLAIN_DICTIONARY;
+ import static parquet.column.Encoding.RLE_DICTIONARY;
++import parquet.column.impl.ColumnWriteStoreV1;
++import parquet.column.impl.ColumnWriteStoreV2;
++import parquet.column.page.PageWriteStore;
+ import parquet.column.values.ValuesWriter;
+ import parquet.column.values.boundedint.DevNullValuesWriter;
+ import parquet.column.values.delta.DeltaBinaryPackingValuesWriter;
+@@ -20,6 +23,7 @@ import parquet.column.values.plain.BooleanPlainValuesWriter;
+ import parquet.column.values.plain.FixedLenByteArrayPlainValuesWriter;
+ import parquet.column.values.plain.PlainValuesWriter;
+ import parquet.column.values.rle.RunLengthBitPackingHybridValuesWriter;
++import parquet.schema.MessageType;
+ 
+ /**
+  * This class represents all the configurable Parquet properties.
+@@ -195,4 +199,25 @@ public class ParquetProperties {
+   public boolean isEnableDictionary() {
+     return enableDictionary;
+   }
++
++  public ColumnWriteStore newColumnWriteStore(
++      MessageType schema,
++      PageWriteStore pageStore, int pageSize,
++      int initialPageBufferSize) {
++    switch (writerVersion) {
++    case PARQUET_1_0:
++      return new ColumnWriteStoreV1(
++          pageStore,
++          pageSize, initialPageBufferSize, dictionaryPageSizeThreshold,
++          enableDictionary, writerVersion);
++    case PARQUET_2_0:
++      return new ColumnWriteStoreV2(
++          schema,
++          pageStore,
++          pageSize, initialPageBufferSize,
++          new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary));
++    default:
++      throw new IllegalArgumentException("unknown version " + writerVersion);
++    }
++  }
+ }
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnReaderImpl.java b/parquet-column/src/main/java/parquet/column/impl/ColumnReaderImpl.java
+index a58bfd9..dfbdc71 100644
+--- a/parquet-column/src/main/java/parquet/column/impl/ColumnReaderImpl.java
++++ b/parquet-column/src/main/java/parquet/column/impl/ColumnReaderImpl.java
+@@ -18,18 +18,27 @@ package parquet.column.impl;
+ import static java.lang.String.format;
+ import static parquet.Log.DEBUG;
+ import static parquet.Preconditions.checkNotNull;
++import static parquet.column.ValuesType.DEFINITION_LEVEL;
++import static parquet.column.ValuesType.REPETITION_LEVEL;
++import static parquet.column.ValuesType.VALUES;
+ 
++import java.io.ByteArrayInputStream;
+ import java.io.IOException;
+ 
+ import parquet.Log;
++import parquet.bytes.BytesInput;
++import parquet.bytes.BytesUtils;
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.ColumnReader;
+ import parquet.column.Dictionary;
+-import parquet.column.ValuesType;
++import parquet.column.Encoding;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
+ import parquet.column.page.PageReader;
+ import parquet.column.values.ValuesReader;
++import parquet.column.values.rle.RunLengthBitPackingHybridDecoder;
+ import parquet.io.ParquetDecodingException;
+ import parquet.io.api.Binary;
+ import parquet.io.api.PrimitiveConverter;
+@@ -95,7 +104,7 @@ class ColumnReaderImpl implements ColumnReader {
+     public long getLong() {
+       throw new UnsupportedOperationException();
+     }
+-    
++
+     /**
+      * @return current value
+      */
+@@ -123,8 +132,8 @@ class ColumnReaderImpl implements ColumnReader {
+   private final PageReader pageReader;
+   private final Dictionary dictionary;
+ 
+-  private ValuesReader repetitionLevelColumn;
+-  private ValuesReader definitionLevelColumn;
++  private IntIterator repetitionLevelColumn;
++  private IntIterator definitionLevelColumn;
+   protected ValuesReader dataColumn;
+ 
+   private int repetitionLevel;
+@@ -478,8 +487,8 @@ class ColumnReaderImpl implements ColumnReader {
+ 
+   // TODO: change the logic around read() to not tie together reading from the 3 columns
+   private void readRepetitionAndDefinitionLevels() {
+-    repetitionLevel = repetitionLevelColumn.readInteger();
+-    definitionLevel = definitionLevelColumn.readInteger();
++    repetitionLevel = repetitionLevelColumn.nextInt();
++    definitionLevel = definitionLevelColumn.nextInt();
+     ++readValues;
+   }
+ 
+@@ -497,42 +506,91 @@ class ColumnReaderImpl implements ColumnReader {
+ 
+   private void readPage() {
+     if (DEBUG) LOG.debug("loading page");
+-    Page page = pageReader.readPage();
++    DataPage page = pageReader.readPage();
++    page.accept(new DataPage.Visitor<Void>() {
++      @Override
++      public Void visit(DataPageV1 dataPageV1) {
++        readPageV1(dataPageV1);
++        return null;
++      }
++      @Override
++      public Void visit(DataPageV2 dataPageV2) {
++        readPageV2(dataPageV2);
++        return null;
++      }
++    });
++  }
+ 
+-    this.repetitionLevelColumn = page.getRlEncoding().getValuesReader(path, ValuesType.REPETITION_LEVEL);
+-    this.definitionLevelColumn = page.getDlEncoding().getValuesReader(path, ValuesType.DEFINITION_LEVEL);
+-    if (page.getValueEncoding().usesDictionary()) {
++  private void initDataReader(Encoding dataEncoding, byte[] bytes, int offset, int valueCount) {
++    this.pageValueCount = valueCount;
++    this.endOfPageValueCount = readValues + pageValueCount;
++    if (dataEncoding.usesDictionary()) {
+       if (dictionary == null) {
+         throw new ParquetDecodingException(
+-            "could not read page " + page + " in col " + path + " as the dictionary was missing for encoding " + page.getValueEncoding());
++            "could not read page in col " + path + " as the dictionary was missing for encoding " + dataEncoding);
+       }
+-      this.dataColumn = page.getValueEncoding().getDictionaryBasedValuesReader(path, ValuesType.VALUES, dictionary);
++      this.dataColumn = dataEncoding.getDictionaryBasedValuesReader(path, VALUES, dictionary);
+     } else {
+-      this.dataColumn = page.getValueEncoding().getValuesReader(path, ValuesType.VALUES);
++      this.dataColumn = dataEncoding.getValuesReader(path, VALUES);
+     }
+-    if (page.getValueEncoding().usesDictionary() && converter.hasDictionarySupport()) {
++    if (dataEncoding.usesDictionary() && converter.hasDictionarySupport()) {
+       bindToDictionary(dictionary);
+     } else {
+       bind(path.getType());
+     }
+-    this.pageValueCount = page.getValueCount();
+-    this.endOfPageValueCount = readValues + pageValueCount;
++    try {
++      dataColumn.initFromPage(pageValueCount, bytes, offset);
++    } catch (IOException e) {
++      throw new ParquetDecodingException("could not read page in col " + path, e);
++    }
++  }
++
++  private void readPageV1(DataPageV1 page) {
++    ValuesReader rlReader = page.getRlEncoding().getValuesReader(path, REPETITION_LEVEL);
++    ValuesReader dlReader = page.getDlEncoding().getValuesReader(path, DEFINITION_LEVEL);
++    this.repetitionLevelColumn = new ValuesReaderIntIterator(rlReader);
++    this.definitionLevelColumn = new ValuesReaderIntIterator(dlReader);
+     try {
+       byte[] bytes = page.getBytes().toByteArray();
+       if (DEBUG) LOG.debug("page size " + bytes.length + " bytes and " + pageValueCount + " records");
+       if (DEBUG) LOG.debug("reading repetition levels at 0");
+-      repetitionLevelColumn.initFromPage(pageValueCount, bytes, 0);
+-      int next = repetitionLevelColumn.getNextOffset();
++      rlReader.initFromPage(pageValueCount, bytes, 0);
++      int next = rlReader.getNextOffset();
+       if (DEBUG) LOG.debug("reading definition levels at " + next);
+-      definitionLevelColumn.initFromPage(pageValueCount, bytes, next);
+-      next = definitionLevelColumn.getNextOffset();
++      dlReader.initFromPage(pageValueCount, bytes, next);
++      next = dlReader.getNextOffset();
+       if (DEBUG) LOG.debug("reading data at " + next);
+-      dataColumn.initFromPage(pageValueCount, bytes, next);
++      initDataReader(page.getValueEncoding(), bytes, next, page.getValueCount());
+     } catch (IOException e) {
+       throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
+     }
+   }
+ 
++  private void readPageV2(DataPageV2 page) {
++    this.repetitionLevelColumn = newRLEIterator(path.getMaxRepetitionLevel(), page.getRepetitionLevels());
++    this.definitionLevelColumn = newRLEIterator(path.getMaxDefinitionLevel(), page.getDefinitionLevels());
++    try {
++      if (DEBUG) LOG.debug("page data size " + page.getData().size() + " bytes and " + pageValueCount + " records");
++      initDataReader(page.getDataEncoding(), page.getData().toByteArray(), 0, page.getValueCount());
++    } catch (IOException e) {
++      throw new ParquetDecodingException("could not read page " + page + " in col " + path, e);
++    }
++  }
++
++  private IntIterator newRLEIterator(int maxLevel, BytesInput bytes) {
++    try {
++      if (maxLevel == 0) {
++        return new NullIntIterator();
++      }
++      return new RLEIntIterator(
++          new RunLengthBitPackingHybridDecoder(
++              BytesUtils.getWidthFromMaxInt(maxLevel),
++              new ByteArrayInputStream(bytes.toByteArray())));
++    } catch (IOException e) {
++      throw new ParquetDecodingException("could not read levels in page for col " + path, e);
++    }
++  }
++
+   private boolean isPageFullyConsumed() {
+     return readValues >= endOfPageValueCount;
+   }
+@@ -556,4 +614,45 @@ class ColumnReaderImpl implements ColumnReader {
+     return totalValueCount;
+   }
+ 
++  static abstract class IntIterator {
++    abstract int nextInt();
++  }
++
++  static class ValuesReaderIntIterator extends IntIterator {
++    ValuesReader delegate;
++
++    public ValuesReaderIntIterator(ValuesReader delegate) {
++      super();
++      this.delegate = delegate;
++    }
++
++    @Override
++    int nextInt() {
++      return delegate.readInteger();
++    }
++  }
++
++  static class RLEIntIterator extends IntIterator {
++    RunLengthBitPackingHybridDecoder delegate;
++
++    public RLEIntIterator(RunLengthBitPackingHybridDecoder delegate) {
++      this.delegate = delegate;
++    }
++
++    @Override
++    int nextInt() {
++      try {
++        return delegate.readInt();
++      } catch (IOException e) {
++        throw new ParquetDecodingException(e);
++      }
++    }
++  }
++
++  private static final class NullIntIterator extends IntIterator {
++    @Override
++    int nextInt() {
++      return 0;
++    }
++  }
+ }
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreImpl.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreImpl.java
+deleted file mode 100644
+index 9d3b15c..0000000
+--- a/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreImpl.java
++++ /dev/null
+@@ -1,127 +0,0 @@
+-/**
+- * Copyright 2012 Twitter, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package parquet.column.impl;
+-
+-import java.util.Arrays;
+-import java.util.Collection;
+-import java.util.Map;
+-import java.util.Map.Entry;
+-import java.util.Set;
+-import java.util.TreeMap;
+-
+-import parquet.column.ColumnDescriptor;
+-import parquet.column.ColumnWriteStore;
+-import parquet.column.ColumnWriter;
+-import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.page.PageWriteStore;
+-import parquet.column.page.PageWriter;
+-
+-
+-public class ColumnWriteStoreImpl implements ColumnWriteStore {
+-
+-  private final Map<ColumnDescriptor, ColumnWriterImpl> columns = new TreeMap<ColumnDescriptor, ColumnWriterImpl>();
+-  private final PageWriteStore pageWriteStore;
+-  private final int pageSizeThreshold;
+-  private final int dictionaryPageSizeThreshold;
+-  private final boolean enableDictionary;
+-  private final int initialSizePerCol;
+-  private final WriterVersion writerVersion;
+-
+-  public ColumnWriteStoreImpl(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
+-    super();
+-    this.pageWriteStore = pageWriteStore;
+-    this.pageSizeThreshold = pageSizeThreshold;
+-    this.initialSizePerCol = initialSizePerCol;
+-    this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
+-    this.enableDictionary = enableDictionary;
+-    this.writerVersion = writerVersion;
+-  }
+-
+-  public ColumnWriter getColumnWriter(ColumnDescriptor path) {
+-    ColumnWriterImpl column = columns.get(path);
+-    if (column == null) {
+-      column = newMemColumn(path);
+-      columns.put(path, column);
+-    }
+-    return column;
+-  }
+-
+-  public Set<ColumnDescriptor> getColumnDescriptors() {
+-    return columns.keySet();
+-  }
+-
+-  private ColumnWriterImpl newMemColumn(ColumnDescriptor path) {
+-    PageWriter pageWriter = pageWriteStore.getPageWriter(path);
+-    return new ColumnWriterImpl(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
+-  }
+-
+-  @Override
+-  public String toString() {
+-      StringBuilder sb = new StringBuilder();
+-      for (Entry<ColumnDescriptor, ColumnWriterImpl> entry : columns.entrySet()) {
+-        sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
+-        sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
+-        sb.append("\n");
+-      }
+-      return sb.toString();
+-  }
+-
+-  public long allocatedSize() {
+-    Collection<ColumnWriterImpl> values = columns.values();
+-    long total = 0;
+-    for (ColumnWriterImpl memColumn : values) {
+-      total += memColumn.allocatedSize();
+-    }
+-    return total;
+-  }
+-
+-  public long memSize() {
+-    Collection<ColumnWriterImpl> values = columns.values();
+-    long total = 0;
+-    for (ColumnWriterImpl memColumn : values) {
+-      total += memColumn.getBufferedSizeInMemory();
+-    }
+-    return total;
+-  }
+-
+-  public long maxColMemSize() {
+-    Collection<ColumnWriterImpl> values = columns.values();
+-    long max = 0;
+-    for (ColumnWriterImpl memColumn : values) {
+-      max = Math.max(max, memColumn.getBufferedSizeInMemory());
+-    }
+-    return max;
+-  }
+-
+-  @Override
+-  public void flush() {
+-    Collection<ColumnWriterImpl> values = columns.values();
+-    for (ColumnWriterImpl memColumn : values) {
+-      memColumn.flush();
+-    }
+-  }
+-
+-  public String memUsageString() {
+-    StringBuilder b = new StringBuilder("Store {\n");
+-    Collection<ColumnWriterImpl> values = columns.values();
+-    for (ColumnWriterImpl memColumn : values) {
+-      b.append(memColumn.memUsageString(" "));
+-    }
+-    b.append("}\n");
+-    return b.toString();
+-  }
+-
+-}
+\ No newline at end of file
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV1.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV1.java
+new file mode 100644
+index 0000000..884c665
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV1.java
+@@ -0,0 +1,134 @@
++/**
++ * Copyright 2012 Twitter, Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package parquet.column.impl;
++
++import java.util.Arrays;
++import java.util.Collection;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.Set;
++import java.util.TreeMap;
++
++import parquet.column.ColumnDescriptor;
++import parquet.column.ColumnWriteStore;
++import parquet.column.ColumnWriter;
++import parquet.column.ParquetProperties.WriterVersion;
++import parquet.column.page.PageWriteStore;
++import parquet.column.page.PageWriter;
++
++public class ColumnWriteStoreV1 implements ColumnWriteStore {
++
++  private final Map<ColumnDescriptor, ColumnWriterV1> columns = new TreeMap<ColumnDescriptor, ColumnWriterV1>();
++  private final PageWriteStore pageWriteStore;
++  private final int pageSizeThreshold;
++  private final int dictionaryPageSizeThreshold;
++  private final boolean enableDictionary;
++  private final int initialSizePerCol;
++  private final WriterVersion writerVersion;
++
++  public ColumnWriteStoreV1(PageWriteStore pageWriteStore, int pageSizeThreshold, int initialSizePerCol, int dictionaryPageSizeThreshold, boolean enableDictionary, WriterVersion writerVersion) {
++    super();
++    this.pageWriteStore = pageWriteStore;
++    this.pageSizeThreshold = pageSizeThreshold;
++    this.initialSizePerCol = initialSizePerCol;
++    this.dictionaryPageSizeThreshold = dictionaryPageSizeThreshold;
++    this.enableDictionary = enableDictionary;
++    this.writerVersion = writerVersion;
++  }
++
++  public ColumnWriter getColumnWriter(ColumnDescriptor path) {
++    ColumnWriterV1 column = columns.get(path);
++    if (column == null) {
++      column = newMemColumn(path);
++      columns.put(path, column);
++    }
++    return column;
++  }
++
++  public Set<ColumnDescriptor> getColumnDescriptors() {
++    return columns.keySet();
++  }
++
++  private ColumnWriterV1 newMemColumn(ColumnDescriptor path) {
++    PageWriter pageWriter = pageWriteStore.getPageWriter(path);
++    return new ColumnWriterV1(path, pageWriter, pageSizeThreshold, initialSizePerCol, dictionaryPageSizeThreshold, enableDictionary, writerVersion);
++  }
++
++  @Override
++  public String toString() {
++      StringBuilder sb = new StringBuilder();
++      for (Entry<ColumnDescriptor, ColumnWriterV1> entry : columns.entrySet()) {
++        sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
++        sb.append(entry.getValue().getBufferedSizeInMemory()).append(" bytes");
++        sb.append("\n");
++      }
++      return sb.toString();
++  }
++
++  @Override
++  public long getAllocatedSize() {
++    Collection<ColumnWriterV1> values = columns.values();
++    long total = 0;
++    for (ColumnWriterV1 memColumn : values) {
++      total += memColumn.allocatedSize();
++    }
++    return total;
++  }
++
++  @Override
++  public long getBufferedSize() {
++    Collection<ColumnWriterV1> values = columns.values();
++    long total = 0;
++    for (ColumnWriterV1 memColumn : values) {
++      total += memColumn.getBufferedSizeInMemory();
++    }
++    return total;
++  }
++
++  @Override
++  public String memUsageString() {
++    StringBuilder b = new StringBuilder("Store {\n");
++    Collection<ColumnWriterV1> values = columns.values();
++    for (ColumnWriterV1 memColumn : values) {
++      b.append(memColumn.memUsageString(" "));
++    }
++    b.append("}\n");
++    return b.toString();
++  }
++
++  public long maxColMemSize() {
++    Collection<ColumnWriterV1> values = columns.values();
++    long max = 0;
++    for (ColumnWriterV1 memColumn : values) {
++      max = Math.max(max, memColumn.getBufferedSizeInMemory());
++    }
++    return max;
++  }
++
++  @Override
++  public void flush() {
++    Collection<ColumnWriterV1> values = columns.values();
++    for (ColumnWriterV1 memColumn : values) {
++      memColumn.flush();
++    }
++  }
++
++  @Override
++  public void endRecord() {
++    // V1 does not take record boundaries into account
++  }
++
++}
+\ No newline at end of file
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV2.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV2.java
+new file mode 100644
+index 0000000..ba6edf3
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/impl/ColumnWriteStoreV2.java
+@@ -0,0 +1,163 @@
++/**
++ * Copyright 2012 Twitter, Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package parquet.column.impl;
++
++import static java.lang.Math.max;
++import static java.lang.Math.min;
++import static java.util.Collections.unmodifiableMap;
++
++import java.util.Arrays;
++import java.util.Collection;
++import java.util.Map;
++import java.util.Map.Entry;
++import java.util.Set;
++import java.util.TreeMap;
++
++import parquet.column.ColumnDescriptor;
++import parquet.column.ColumnWriteStore;
++import parquet.column.ColumnWriter;
++import parquet.column.ParquetProperties;
++import parquet.column.page.PageWriteStore;
++import parquet.column.page.PageWriter;
++import parquet.schema.MessageType;
++
++public class ColumnWriteStoreV2 implements ColumnWriteStore {
++
++  // will wait for at least that many records before checking again
++  private static final int MINIMUM_RECORD_COUNT_FOR_CHECK = 100;
++  private static final int MAXIMUM_RECORD_COUNT_FOR_CHECK = 10000;
++  // will flush even if size bellow the threshold by this much to facilitate page alignment
++  private static final float THRESHOLD_TOLERANCE_RATIO = 0.1f; // 10 %
++
++  private final Map<ColumnDescriptor, ColumnWriterV2> columns;
++  private final Collection<ColumnWriterV2> writers;
++  private long rowCount;
++  private long rowCountForNextSizeCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
++  private final long thresholdTolerance;
++
++  private int pageSizeThreshold;
++
++  public ColumnWriteStoreV2(
++      MessageType schema,
++      PageWriteStore pageWriteStore,
++      int pageSizeThreshold, int initialSizePerCol,
++      ParquetProperties parquetProps) {
++    super();
++    this.pageSizeThreshold = pageSizeThreshold;
++    this.thresholdTolerance = (long)(pageSizeThreshold * THRESHOLD_TOLERANCE_RATIO);
++    Map<ColumnDescriptor, ColumnWriterV2> mcolumns = new TreeMap<ColumnDescriptor, ColumnWriterV2>();
++    for (ColumnDescriptor path : schema.getColumns()) {
++      PageWriter pageWriter = pageWriteStore.getPageWriter(path);
++      mcolumns.put(path, new ColumnWriterV2(path, pageWriter, initialSizePerCol, parquetProps));
++    }
++    this.columns = unmodifiableMap(mcolumns);
++    this.writers = this.columns.values();
++  }
++
++  public ColumnWriter getColumnWriter(ColumnDescriptor path) {
++    return columns.get(path);
++  }
++
++  public Set<ColumnDescriptor> getColumnDescriptors() {
++    return columns.keySet();
++  }
++
++  @Override
++  public String toString() {
++      StringBuilder sb = new StringBuilder();
++      for (Entry<ColumnDescriptor, ColumnWriterV2> entry : columns.entrySet()) {
++        sb.append(Arrays.toString(entry.getKey().getPath())).append(": ");
++        sb.append(entry.getValue().getTotalBufferedSize()).append(" bytes");
++        sb.append("\n");
++      }
++      return sb.toString();
++  }
++
++  @Override
++  public long getAllocatedSize() {
++    long total = 0;
++    for (ColumnWriterV2 memColumn : columns.values()) {
++      total += memColumn.allocatedSize();
++    }
++    return total;
++  }
++
++  @Override
++  public long getBufferedSize() {
++    long total = 0;
++    for (ColumnWriterV2 memColumn : columns.values()) {
++      total += memColumn.getTotalBufferedSize();
++    }
++    return total;
++  }
++
++  @Override
++  public void flush() {
++    for (ColumnWriterV2 memColumn : columns.values()) {
++      long rows = rowCount - memColumn.getRowsWrittenSoFar();
++      if (rows > 0) {
++        memColumn.writePage(rowCount);
++      }
++      memColumn.finalizeColumnChunk();
++    }
++  }
++
++  public String memUsageString() {
++    StringBuilder b = new StringBuilder("Store {\n");
++    for (ColumnWriterV2 memColumn : columns.values()) {
++      b.append(memColumn.memUsageString(" "));
++    }
++    b.append("}\n");
++    return b.toString();
++  }
++
++  @Override
++  public void endRecord() {
++    ++ rowCount;
++    if (rowCount >= rowCountForNextSizeCheck) {
++      sizeCheck();
++    }
++  }
++
++  private void sizeCheck() {
++    long minRecordToWait = Long.MAX_VALUE;
++    for (ColumnWriterV2 writer : writers) {
++      long usedMem = writer.getCurrentPageBufferedSize();
++      long rows = rowCount - writer.getRowsWrittenSoFar();
++      long remainingMem = pageSizeThreshold - usedMem;
++      if (remainingMem <= thresholdTolerance) {
++        writer.writePage(rowCount);
++        remainingMem = pageSizeThreshold;
++      }
++      long rowsToFillPage =
++          usedMem == 0 ?
++              MAXIMUM_RECORD_COUNT_FOR_CHECK
++              : (long)((float)rows) / usedMem * remainingMem;
++      if (rowsToFillPage < minRecordToWait) {
++        minRecordToWait = rowsToFillPage;
++      }
++    }
++    if (minRecordToWait == Long.MAX_VALUE) {
++      minRecordToWait = MINIMUM_RECORD_COUNT_FOR_CHECK;
++    }
++    // will check again halfway
++    rowCountForNextSizeCheck = rowCount +
++        min(
++            max(minRecordToWait / 2, MINIMUM_RECORD_COUNT_FOR_CHECK), // no less than MINIMUM_RECORD_COUNT_FOR_CHECK
++            MAXIMUM_RECORD_COUNT_FOR_CHECK); // no more than MAXIMUM_RECORD_COUNT_FOR_CHECK
++  }
++
++}
+\ No newline at end of file
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriterImpl.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriterImpl.java
+deleted file mode 100644
+index 628b848..0000000
+--- a/parquet-column/src/main/java/parquet/column/impl/ColumnWriterImpl.java
++++ /dev/null
+@@ -1,275 +0,0 @@
+-/**
+- * Copyright 2012 Twitter, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package parquet.column.impl;
+-
+-import static parquet.bytes.BytesInput.concat;
+-
+-import java.io.IOException;
+-
+-import parquet.Log;
+-import parquet.column.ColumnDescriptor;
+-import parquet.column.ColumnWriter;
+-import parquet.column.ParquetProperties;
+-import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.page.DictionaryPage;
+-import parquet.column.page.PageWriter;
+-import parquet.column.statistics.Statistics;
+-import parquet.column.values.ValuesWriter;
+-import parquet.io.ParquetEncodingException;
+-import parquet.io.api.Binary;
+-
+-/**
+- * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
+- *
+- * @author Julien Le Dem
+- *
+- */
+-final class ColumnWriterImpl implements ColumnWriter {
+-  private static final Log LOG = Log.getLog(ColumnWriterImpl.class);
+-  private static final boolean DEBUG = Log.DEBUG;
+-  private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
+-
+-  private final ColumnDescriptor path;
+-  private final PageWriter pageWriter;
+-  private final long pageSizeThreshold;
+-  private ValuesWriter repetitionLevelColumn;
+-  private ValuesWriter definitionLevelColumn;
+-  private ValuesWriter dataColumn;
+-  private int valueCount;
+-  private int valueCountForNextSizeCheck;
+-
+-  private Statistics statistics;
+-
+-  public ColumnWriterImpl(
+-      ColumnDescriptor path,
+-      PageWriter pageWriter,
+-      int pageSizeThreshold,
+-      int initialSizePerCol,
+-      int dictionaryPageSizeThreshold,
+-      boolean enableDictionary,
+-      WriterVersion writerVersion) {
+-    this.path = path;
+-    this.pageWriter = pageWriter;
+-    this.pageSizeThreshold = pageSizeThreshold;
+-    // initial check of memory usage. So that we have enough data to make an initial prediction
+-    this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
+-    resetStatistics();
+-
+-    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
+-    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
+-    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
+-    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
+-  }
+-
+-  private void initStatistics() {
+-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+-  }
+-
+-  private void log(Object value, int r, int d) {
+-    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
+-  }
+-
+-  private void resetStatistics() {
+-    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
+-  }
+-
+-  /**
+-   * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
+-   *
+-   * We measure the memory used when we reach the mid point toward our estimated count.
+-   * We then update the estimate and flush the page if we reached the threshold.
+-   *
+-   * That way we check the memory size log2(n) times.
+-   *
+-   */
+-  private void accountForValueWritten() {
+-    ++ valueCount;
+-    if (valueCount > valueCountForNextSizeCheck) {
+-      // not checking the memory used for every value
+-      long memSize = repetitionLevelColumn.getBufferedSize()
+-          + definitionLevelColumn.getBufferedSize()
+-          + dataColumn.getBufferedSize();
+-      if (memSize > pageSizeThreshold) {
+-        // we will write the current page and check again the size at the predicted middle of next page
+-        valueCountForNextSizeCheck = valueCount / 2;
+-        writePage();
+-      } else {
+-        // not reached the threshold, will check again midway
+-        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
+-      }
+-    }
+-  }
+-
+-  private void updateStatisticsNumNulls() {
+-    statistics.incrementNumNulls();
+-  }
+-
+-  private void updateStatistics(int value) {
+-    statistics.updateStats(value);
+-  }
+-
+-  private void updateStatistics(long value) {
+-    statistics.updateStats(value);
+-  }
+-
+-  private void updateStatistics(float value) {
+-    statistics.updateStats(value);
+-  }
+-
+-  private void updateStatistics(double value) {
+-   statistics.updateStats(value);
+-  }
+-
+-  private void updateStatistics(Binary value) {
+-   statistics.updateStats(value);
+-  }
+-
+-  private void updateStatistics(boolean value) {
+-   statistics.updateStats(value);
+-  }
+-
+-  private void writePage() {
+-    if (DEBUG) LOG.debug("write page");
+-    try {
+-      pageWriter.writePage(
+-          concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
+-          valueCount,
+-          statistics,
+-          repetitionLevelColumn.getEncoding(),
+-          definitionLevelColumn.getEncoding(),
+-          dataColumn.getEncoding());
+-    } catch (IOException e) {
+-      throw new ParquetEncodingException("could not write page for " + path, e);
+-    }
+-    repetitionLevelColumn.reset();
+-    definitionLevelColumn.reset();
+-    dataColumn.reset();
+-    valueCount = 0;
+-    resetStatistics();
+-  }
+-
+-  @Override
+-  public void writeNull(int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(null, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    updateStatisticsNumNulls();
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(double value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeDouble(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(float value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeFloat(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(Binary value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeBytes(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(boolean value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeBoolean(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(int value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeInteger(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void write(long value, int repetitionLevel, int definitionLevel) {
+-    if (DEBUG) log(value, repetitionLevel, definitionLevel);
+-    repetitionLevelColumn.writeInteger(repetitionLevel);
+-    definitionLevelColumn.writeInteger(definitionLevel);
+-    dataColumn.writeLong(value);
+-    updateStatistics(value);
+-    accountForValueWritten();
+-  }
+-
+-  @Override
+-  public void flush() {
+-    if (valueCount > 0) {
+-      writePage();
+-    }
+-    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
+-    if (dictionaryPage != null) {
+-      if (DEBUG) LOG.debug("write dictionary");
+-      try {
+-        pageWriter.writeDictionaryPage(dictionaryPage);
+-      } catch (IOException e) {
+-        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
+-      }
+-      dataColumn.resetDictionary();
+-    }
+-  }
+-
+-  @Override
+-  public long getBufferedSizeInMemory() {
+-    return repetitionLevelColumn.getBufferedSize()
+-        + definitionLevelColumn.getBufferedSize()
+-        + dataColumn.getBufferedSize()
+-        + pageWriter.getMemSize();
+-  }
+-
+-  public long allocatedSize() {
+-    return repetitionLevelColumn.getAllocatedSize()
+-    + definitionLevelColumn.getAllocatedSize()
+-    + dataColumn.getAllocatedSize()
+-    + pageWriter.allocatedSize();
+-  }
+-
+-  public String memUsageString(String indent) {
+-    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
+-    b.append(repetitionLevelColumn.memUsageString(indent + "  r:")).append("\n");
+-    b.append(definitionLevelColumn.memUsageString(indent + "  d:")).append("\n");
+-    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
+-    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
+-    b.append(indent).append(String.format("  total: %,d/%,d", getBufferedSizeInMemory(), allocatedSize())).append("\n");
+-    b.append(indent).append("}\n");
+-    return b.toString();
+-  }
+-}
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV1.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV1.java
+new file mode 100644
+index 0000000..8b72207
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV1.java
+@@ -0,0 +1,269 @@
++/**
++ * Copyright 2012 Twitter, Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package parquet.column.impl;
++
++import static parquet.bytes.BytesInput.concat;
++
++import java.io.IOException;
++
++import parquet.Log;
++import parquet.column.ColumnDescriptor;
++import parquet.column.ColumnWriter;
++import parquet.column.ParquetProperties;
++import parquet.column.ParquetProperties.WriterVersion;
++import parquet.column.page.DictionaryPage;
++import parquet.column.page.PageWriter;
++import parquet.column.statistics.Statistics;
++import parquet.column.values.ValuesWriter;
++import parquet.io.ParquetEncodingException;
++import parquet.io.api.Binary;
++
++/**
++ * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
++ *
++ * @author Julien Le Dem
++ *
++ */
++final class ColumnWriterV1 implements ColumnWriter {
++  private static final Log LOG = Log.getLog(ColumnWriterV1.class);
++  private static final boolean DEBUG = Log.DEBUG;
++  private static final int INITIAL_COUNT_FOR_SIZE_CHECK = 100;
++
++  private final ColumnDescriptor path;
++  private final PageWriter pageWriter;
++  private final long pageSizeThreshold;
++  private ValuesWriter repetitionLevelColumn;
++  private ValuesWriter definitionLevelColumn;
++  private ValuesWriter dataColumn;
++  private int valueCount;
++  private int valueCountForNextSizeCheck;
++
++  private Statistics statistics;
++
++  public ColumnWriterV1(
++      ColumnDescriptor path,
++      PageWriter pageWriter,
++      int pageSizeThreshold,
++      int initialSizePerCol,
++      int dictionaryPageSizeThreshold,
++      boolean enableDictionary,
++      WriterVersion writerVersion) {
++    this.path = path;
++    this.pageWriter = pageWriter;
++    this.pageSizeThreshold = pageSizeThreshold;
++    // initial check of memory usage. So that we have enough data to make an initial prediction
++    this.valueCountForNextSizeCheck = INITIAL_COUNT_FOR_SIZE_CHECK;
++    resetStatistics();
++
++    ParquetProperties parquetProps = new ParquetProperties(dictionaryPageSizeThreshold, writerVersion, enableDictionary);
++    this.repetitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxRepetitionLevel(), initialSizePerCol);
++    this.definitionLevelColumn = ParquetProperties.getColumnDescriptorValuesWriter(path.getMaxDefinitionLevel(), initialSizePerCol);
++    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
++  }
++
++  private void log(Object value, int r, int d) {
++    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
++  }
++
++  private void resetStatistics() {
++    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
++  }
++
++  /**
++   * Counts how many values have been written and checks the memory usage to flush the page when we reach the page threshold.
++   *
++   * We measure the memory used when we reach the mid point toward our estimated count.
++   * We then update the estimate and flush the page if we reached the threshold.
++   *
++   * That way we check the memory size log2(n) times.
++   *
++   */
++  private void accountForValueWritten() {
++    ++ valueCount;
++    if (valueCount > valueCountForNextSizeCheck) {
++      // not checking the memory used for every value
++      long memSize = repetitionLevelColumn.getBufferedSize()
++          + definitionLevelColumn.getBufferedSize()
++          + dataColumn.getBufferedSize();
++      if (memSize > pageSizeThreshold) {
++        // we will write the current page and check again the size at the predicted middle of next page
++        valueCountForNextSizeCheck = valueCount / 2;
++        writePage();
++      } else {
++        // not reached the threshold, will check again midway
++        valueCountForNextSizeCheck = (int)(valueCount + ((float)valueCount * pageSizeThreshold / memSize)) / 2 + 1;
++      }
++    }
++  }
++
++  private void updateStatisticsNumNulls() {
++    statistics.incrementNumNulls();
++  }
++
++  private void updateStatistics(int value) {
++    statistics.updateStats(value);
++  }
++
++  private void updateStatistics(long value) {
++    statistics.updateStats(value);
++  }
++
++  private void updateStatistics(float value) {
++    statistics.updateStats(value);
++  }
++
++  private void updateStatistics(double value) {
++   statistics.updateStats(value);
++  }
++
++  private void updateStatistics(Binary value) {
++   statistics.updateStats(value);
++  }
++
++  private void updateStatistics(boolean value) {
++   statistics.updateStats(value);
++  }
++
++  private void writePage() {
++    if (DEBUG) LOG.debug("write page");
++    try {
++      pageWriter.writePage(
++          concat(repetitionLevelColumn.getBytes(), definitionLevelColumn.getBytes(), dataColumn.getBytes()),
++          valueCount,
++          statistics,
++          repetitionLevelColumn.getEncoding(),
++          definitionLevelColumn.getEncoding(),
++          dataColumn.getEncoding());
++    } catch (IOException e) {
++      throw new ParquetEncodingException("could not write page for " + path, e);
++    }
++    repetitionLevelColumn.reset();
++    definitionLevelColumn.reset();
++    dataColumn.reset();
++    valueCount = 0;
++    resetStatistics();
++  }
++
++  @Override
++  public void writeNull(int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(null, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    updateStatisticsNumNulls();
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(double value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeDouble(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(float value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeFloat(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(Binary value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeBytes(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(boolean value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeBoolean(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(int value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeInteger(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  @Override
++  public void write(long value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevelColumn.writeInteger(repetitionLevel);
++    definitionLevelColumn.writeInteger(definitionLevel);
++    dataColumn.writeLong(value);
++    updateStatistics(value);
++    accountForValueWritten();
++  }
++
++  public void flush() {
++    if (valueCount > 0) {
++      writePage();
++    }
++    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
++    if (dictionaryPage != null) {
++      if (DEBUG) LOG.debug("write dictionary");
++      try {
++        pageWriter.writeDictionaryPage(dictionaryPage);
++      } catch (IOException e) {
++        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
++      }
++      dataColumn.resetDictionary();
++    }
++  }
++
++  public long getBufferedSizeInMemory() {
++    return repetitionLevelColumn.getBufferedSize()
++        + definitionLevelColumn.getBufferedSize()
++        + dataColumn.getBufferedSize()
++        + pageWriter.getMemSize();
++  }
++
++  public long allocatedSize() {
++    return repetitionLevelColumn.getAllocatedSize()
++    + definitionLevelColumn.getAllocatedSize()
++    + dataColumn.getAllocatedSize()
++    + pageWriter.allocatedSize();
++  }
++
++  public String memUsageString(String indent) {
++    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
++    b.append(repetitionLevelColumn.memUsageString(indent + "  r:")).append("\n");
++    b.append(definitionLevelColumn.memUsageString(indent + "  d:")).append("\n");
++    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
++    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
++    b.append(indent).append(String.format("  total: %,d/%,d", getBufferedSizeInMemory(), allocatedSize())).append("\n");
++    b.append(indent).append("}\n");
++    return b.toString();
++  }
++}
+diff --git a/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV2.java b/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV2.java
+new file mode 100644
+index 0000000..65f0366
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/impl/ColumnWriterV2.java
+@@ -0,0 +1,295 @@
++/**
++ * Copyright 2012 Twitter, Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package parquet.column.impl;
++
++import static parquet.bytes.BytesUtils.getWidthFromMaxInt;
++
++import java.io.IOException;
++
++import parquet.Ints;
++import parquet.Log;
++import parquet.bytes.BytesInput;
++import parquet.column.ColumnDescriptor;
++import parquet.column.ColumnWriter;
++import parquet.column.Encoding;
++import parquet.column.ParquetProperties;
++import parquet.column.page.DictionaryPage;
++import parquet.column.page.PageWriter;
++import parquet.column.statistics.Statistics;
++import parquet.column.values.ValuesWriter;
++import parquet.column.values.rle.RunLengthBitPackingHybridEncoder;
++import parquet.io.ParquetEncodingException;
++import parquet.io.api.Binary;
++
++/**
++ * Writes (repetition level, definition level, value) triplets and deals with writing pages to the underlying layer.
++ *
++ * @author Julien Le Dem
++ *
++ */
++final class ColumnWriterV2 implements ColumnWriter {
++  private static final Log LOG = Log.getLog(ColumnWriterV2.class);
++  private static final boolean DEBUG = Log.DEBUG;
++
++  private final ColumnDescriptor path;
++  private final PageWriter pageWriter;
++  private RunLengthBitPackingHybridEncoder repetitionLevelColumn;
++  private RunLengthBitPackingHybridEncoder definitionLevelColumn;
++  private ValuesWriter dataColumn;
++  private int valueCount;
++
++  private Statistics<?> statistics;
++  private long rowsWrittenSoFar = 0;
++
++  public ColumnWriterV2(
++      ColumnDescriptor path,
++      PageWriter pageWriter,
++      int initialSizePerCol,
++      ParquetProperties parquetProps) {
++    this.path = path;
++    this.pageWriter = pageWriter;
++    resetStatistics();
++    this.repetitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxRepetitionLevel()), initialSizePerCol);
++    this.definitionLevelColumn = new RunLengthBitPackingHybridEncoder(getWidthFromMaxInt(path.getMaxDefinitionLevel()), initialSizePerCol);
++    this.dataColumn = parquetProps.getValuesWriter(path, initialSizePerCol);
++  }
++
++  private void log(Object value, int r, int d) {
++    LOG.debug(path + " " + value + " r:" + r + " d:" + d);
++  }
++
++  private void resetStatistics() {
++    this.statistics = Statistics.getStatsBasedOnType(this.path.getType());
++  }
++
++  private void definitionLevel(int definitionLevel) {
++    try {
++      definitionLevelColumn.writeInt(definitionLevel);
++    } catch (IOException e) {
++      throw new ParquetEncodingException("illegal definition level " + definitionLevel + " for column " + path, e);
++    }
++  }
++
++  private void repetitionLevel(int repetitionLevel) {
++    try {
++      repetitionLevelColumn.writeInt(repetitionLevel);
++    } catch (IOException e) {
++      throw new ParquetEncodingException("illegal repetition level " + repetitionLevel + " for column " + path, e);
++    }
++  }
++
++  /**
++   * writes the current null value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void writeNull(int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(null, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    statistics.incrementNumNulls();
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(double value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeDouble(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(float value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeFloat(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(Binary value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeBytes(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(boolean value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeBoolean(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(int value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeInteger(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * writes the current value
++   * @param value
++   * @param repetitionLevel
++   * @param definitionLevel
++   */
++  public void write(long value, int repetitionLevel, int definitionLevel) {
++    if (DEBUG) log(value, repetitionLevel, definitionLevel);
++    repetitionLevel(repetitionLevel);
++    definitionLevel(definitionLevel);
++    dataColumn.writeLong(value);
++    statistics.updateStats(value);
++    ++ valueCount;
++  }
++
++  /**
++   * Finalizes the Column chunk. Possibly adding extra pages if needed (dictionary, ...)
++   * Is called right after writePage
++   */
++  public void finalizeColumnChunk() {
++    final DictionaryPage dictionaryPage = dataColumn.createDictionaryPage();
++    if (dictionaryPage != null) {
++      if (DEBUG) LOG.debug("write dictionary");
++      try {
++        pageWriter.writeDictionaryPage(dictionaryPage);
++      } catch (IOException e) {
++        throw new ParquetEncodingException("could not write dictionary page for " + path, e);
++      }
++      dataColumn.resetDictionary();
++    }
++  }
++
++  /**
++   * used to decide when to write a page
++   * @return the number of bytes of memory used to buffer the current data
++   */
++  public long getCurrentPageBufferedSize() {
++    return repetitionLevelColumn.getBufferedSize()
++        + definitionLevelColumn.getBufferedSize()
++        + dataColumn.getBufferedSize();
++  }
++
++  /**
++   * used to decide when to write a page or row group
++   * @return the number of bytes of memory used to buffer the current data and the previously written pages
++   */
++  public long getTotalBufferedSize() {
++    return repetitionLevelColumn.getBufferedSize()
++        + definitionLevelColumn.getBufferedSize()
++        + dataColumn.getBufferedSize()
++        + pageWriter.getMemSize();
++  }
++
++  /**
++   * @return actual memory used
++   */
++  public long allocatedSize() {
++    return repetitionLevelColumn.getAllocatedSize()
++    + definitionLevelColumn.getAllocatedSize()
++    + dataColumn.getAllocatedSize()
++    + pageWriter.allocatedSize();
++  }
++
++  /**
++   * @param prefix a prefix to format lines
++   * @return a formatted string showing how memory is used
++   */
++  public String memUsageString(String indent) {
++    StringBuilder b = new StringBuilder(indent).append(path).append(" {\n");
++    b.append(indent).append(" r:").append(repetitionLevelColumn.getAllocatedSize()).append(" bytes\n");
++    b.append(indent).append(" d:").append(definitionLevelColumn.getAllocatedSize()).append(" bytes\n");
++    b.append(dataColumn.memUsageString(indent + "  data:")).append("\n");
++    b.append(pageWriter.memUsageString(indent + "  pages:")).append("\n");
++    b.append(indent).append(String.format("  total: %,d/%,d", getTotalBufferedSize(), allocatedSize())).append("\n");
++    b.append(indent).append("}\n");
++    return b.toString();
++  }
++
++  public long getRowsWrittenSoFar() {
++    return this.rowsWrittenSoFar;
++  }
++
++  /**
++   * writes the current data to a new page in the page store
++   * @param rowCount how many rows have been written so far
++   */
++  public void writePage(long rowCount) {
++    int pageRowCount = Ints.checkedCast(rowCount - rowsWrittenSoFar);
++    this.rowsWrittenSoFar = rowCount;
++    if (DEBUG) LOG.debug("write page");
++    try {
++      // TODO: rework this API. Those must be called *in that order*
++      BytesInput bytes = dataColumn.getBytes();
++      Encoding encoding = dataColumn.getEncoding();
++      pageWriter.writePageV2(
++          pageRowCount,
++          Ints.checkedCast(statistics.getNumNulls()),
++          valueCount,
++          path.getMaxRepetitionLevel() == 0 ? BytesInput.empty() : repetitionLevelColumn.toBytes(),
++          path.getMaxDefinitionLevel() == 0 ? BytesInput.empty() : definitionLevelColumn.toBytes(),
++          encoding,
++          bytes,
++          statistics
++          );
++    } catch (IOException e) {
++      throw new ParquetEncodingException("could not write page for " + path, e);
++    }
++    repetitionLevelColumn.reset();
++    definitionLevelColumn.reset();
++    dataColumn.reset();
++    valueCount = 0;
++    resetStatistics();
++  }
++}
+diff --git a/parquet-column/src/main/java/parquet/column/page/DataPage.java b/parquet-column/src/main/java/parquet/column/page/DataPage.java
+new file mode 100644
+index 0000000..3a1afa0
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/page/DataPage.java
+@@ -0,0 +1,50 @@
++/**
++ * Copyright 2012 Twitter, Inc.
++ *
++ * Licensed under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.
++ * You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS,
++ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++ * See the License for the specific language governing permissions and
++ * limitations under the License.
++ */
++package parquet.column.page;
++
++/**
++ * one data page in a chunk
++ *
++ * @author Julien Le Dem
++ *
++ */
++abstract public class DataPage extends Page {
++
++  private final int valueCount;
++
++  DataPage(int compressedSize, int uncompressedSize, int valueCount) {
++    super(compressedSize, uncompressedSize);
++    this.valueCount = valueCount;
++  }
++
++  /**
++   * @return the number of values in that page
++   */
++  public int getValueCount() {
++    return valueCount;
++  }
++
++  public abstract <T> T accept(Visitor<T> visitor);
++
++  public static interface Visitor<T> {
++
++    T visit(DataPageV1 dataPageV1);
++
++    T visit(DataPageV2 dataPageV2);
++
++  }
++
++}
+\ No newline at end of file
+diff --git a/parquet-column/src/main/java/parquet/column/page/DataPageV1.java b/parquet-column/src/main/java/parquet/column/page/DataPageV1.java
+new file mode 100644
+index 0000000..a53eed8
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/page/DataPageV1.java
+@@ -0,0 +1,80 @@
++package parquet.column.page;
++
++import parquet.Ints;
++import parquet.bytes.BytesInput;
++import parquet.column.Encoding;
++import parquet.column.statistics.Statistics;
++
++public class DataPageV1 extends DataPage {
++
++  private final BytesInput bytes;
++  private final Statistics<?> statistics;
++  private final Encoding rlEncoding;
++  private final Encoding dlEncoding;
++  private final Encoding valuesEncoding;
++
++  /**
++   * @param bytes the bytes for this page
++   * @param valueCount count of values in this page
++   * @param uncompressedSize the uncompressed size of the page
++   * @param statistics of the page's values (max, min, num_null)
++   * @param rlEncoding the repetition level encoding for this page
++   * @param dlEncoding the definition level encoding for this page
++   * @param valuesEncoding the values encoding for this page
++   * @param dlEncoding
++   */
++  public DataPageV1(BytesInput bytes, int valueCount, int uncompressedSize, Statistics<?> stats, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
++    super(Ints.checkedCast(bytes.size()), uncompressedSize, valueCount);
++    this.bytes = bytes;
++    this.statistics = stats;
++    this.rlEncoding = rlEncoding;
++    this.dlEncoding = dlEncoding;
++    this.valuesEncoding = valuesEncoding;
++  }
++
++  /**
++   * @return the bytes for the page
++   */
++  public BytesInput getBytes() {
++    return bytes;
++  }
++
++  /**
++   *
++   * @return the statistics for this page (max, min, num_nulls)
++   */
++  public Statistics<?> getStatistics() {
++    return statistics;
++  }
++
++  /**
++   * @return the definition level encoding for this page
++   */
++  public Encoding getDlEncoding() {
++    return dlEncoding;
++  }
++
++  /**
++   * @return the repetition level encoding for this page
++   */
++  public Encoding getRlEncoding() {
++    return rlEncoding;
++  }
++
++  /**
++   * @return the values encoding for this page
++   */
++  public Encoding getValueEncoding() {
++    return valuesEncoding;
++  }
++
++  @Override
++  public String toString() {
++    return "Page [bytes.size=" + bytes.size() + ", valueCount=" + getValueCount() + ", uncompressedSize=" + getUncompressedSize() + "]";
++  }
++
++  @Override
++  public <T> T accept(Visitor<T> visitor) {
++    return visitor.visit(this);
++  }
++}
+diff --git a/parquet-column/src/main/java/parquet/column/page/DataPageV2.java b/parquet-column/src/main/java/parquet/column/page/DataPageV2.java
+new file mode 100644
+index 0000000..bc9a873
+--- /dev/null
++++ b/parquet-column/src/main/java/parquet/column/page/DataPageV2.java
+@@ -0,0 +1,138 @@
++package parquet.column.page;
++
++import parquet.Ints;
++import parquet.bytes.BytesInput;
++import parquet.column.Encoding;
++import parquet.column.statistics.Statistics;
++
++public class DataPageV2 extends DataPage {
++
++  /**
++   * @param rowCount
++   * @param nullCount
++   * @param valueCount
++   * @param repetitionLevels RLE encoded repetition levels
++   * @param definitionLevels RLE encoded definition levels
++   * @param dataEncoding encoding for the data
++   * @param data data encoded with dataEncoding
++   * @param statistics optional statistics for this page
++   * @return an uncompressed page
++   */
++  public static DataPageV2 uncompressed(
++      int rowCount, int nullCount, int valueCount,
++      BytesInput repetitionLevels, BytesInput definitionLevels,
++      Encoding dataEncoding, BytesInput data,
++      Statistics<?> statistics) {
++    return new DataPageV2(
++        rowCount, nullCount, valueCount,
++        repetitionLevels, definitionLevels,
++        dataEncoding, data,
++        Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()),
++        statistics,
++        false);
++  }
++
++  /**
++   * @param rowCount
++   * @param nullCount
++   * @param valueCount
++   * @param repetitionLevels RLE encoded repetition levels
++   * @param definitionLevels RLE encoded definition levels
++   * @param dataEncoding encoding for the data
++   * @param data data encoded with dataEncoding and compressed
++   * @param uncompressedSize total size uncompressed (rl + dl + data)
++   * @param statistics optional statistics for this page
++   * @return a compressed page
++   */
++  public static DataPageV2 compressed(
++      int rowCount, int nullCount, int valueCount,
++      BytesInput repetitionLevels, BytesInput definitionLevels,
++      Encoding dataEncoding, BytesInput data,
++      int uncompressedSize,
++      Statistics<?> statistics) {
++    return new DataPageV2(
++        rowCount, nullCount, valueCount,
++        repetitionLevels, definitionLevels,
++        dataEncoding, data,
++        uncompressedSize,
++        statistics,
++        true);
++  }
++
++  private final int rowCount;
++  private final int nullCount;
++  private final BytesInput repetitionLevels;
++  private final BytesInput definitionLevels;
++  private final Encoding dataEncoding;
++  private final BytesInput data;
++  private final Statistics<?> statistics;
++  private final boolean isCompressed;
++
++  public DataPageV2(
++      int rowCount, int nullCount, int valueCount,
++      BytesInput repetitionLevels, BytesInput definitionLevels,
++      Encoding dataEncoding, BytesInput data,
++      int uncompressedSize,
++      Statistics<?> statistics,
++      boolean isCompressed) {
++    super(Ints.checkedCast(repetitionLevels.size() + definitionLevels.size() + data.size()), uncompressedSize, valueCount);
++    this.rowCount = rowCount;
++    this.nullCount = nullCount;
++    this.repetitionLevels = repetitionLevels;
++    this.definitionLevels = definitionLevels;
++    this.dataEncoding = dataEncoding;
++    this.data = data;
++    this.statistics = statistics;
++    this.isCompressed = isCompressed;
++  }
++
++  public int getRowCount() {
++    return rowCount;
++  }
++
++  public int getNullCount() {
++    return nullCount;
++  }
++
++  public BytesInput getRepetitionLevels() {
++    return repetitionLevels;
++  }
++
++  public BytesInput getDefinitionLevels() {
++    return definitionLevels;
++  }
++
++  public Encoding getDataEncoding() {
++    return dataEncoding;
++  }
++
++  public BytesInput getData() {
++    return data;
++  }
++
++  public Statistics<?> getStatistics() {
++    return statistics;
++  }
++
++  public boolean isCompressed() {
++    return isCompressed;
++  }
++
++  @Override
++  public <T> T accept(Visitor<T> visitor) {
++    return visitor.visit(this);
++  }
++
++  @Override
++  public String toString() {
++    return "Page V2 ["
++        + "dl size=" + definitionLevels.size() + ", "
++        + "rl size=" + repetitionLevels.size() + ", "
++        + "data size=" + data.size() + ", "
++        + "data enc=" + dataEncoding + ", "
++        + "valueCount=" + getValueCount() + ", "
++        + "rowCount=" + getRowCount() + ", "
++        + "is compressed=" + isCompressed + ", "
++        + "uncompressedSize=" + getUncompressedSize() + "]";
++  }
++}
+diff --git a/parquet-column/src/main/java/parquet/column/page/DictionaryPage.java b/parquet-column/src/main/java/parquet/column/page/DictionaryPage.java
+index 78e88a2..9ae1037 100644
+--- a/parquet-column/src/main/java/parquet/column/page/DictionaryPage.java
++++ b/parquet-column/src/main/java/parquet/column/page/DictionaryPage.java
+@@ -19,6 +19,7 @@ import static parquet.Preconditions.checkNotNull;
+ 
+ import java.io.IOException;
+ 
++import parquet.Ints;
+ import parquet.bytes.BytesInput;
+ import parquet.column.Encoding;
+ 
+@@ -28,10 +29,9 @@ import parquet.column.Encoding;
+  * @author Julien Le Dem
+  *
+  */
+-public class DictionaryPage {
++public class DictionaryPage extends Page {
+ 
+   private final BytesInput bytes;
+-  private final int uncompressedSize;
+   private final int dictionarySize;
+   private final Encoding encoding;
+ 
+@@ -53,8 +53,8 @@ public class DictionaryPage {
+    * @param encoding the encoding used
+    */
+   public DictionaryPage(BytesInput bytes, int uncompressedSize, int dictionarySize, Encoding encoding) {
++    super(Ints.checkedCast(bytes.size()), uncompressedSize);
+     this.bytes = checkNotNull(bytes, "bytes");
+-    this.uncompressedSize = uncompressedSize;
+     this.dictionarySize = dictionarySize;
+     this.encoding = checkNotNull(encoding, "encoding");
+   }
+@@ -63,10 +63,6 @@ public class DictionaryPage {
+     return bytes;
+   }
+ 
+-  public int getUncompressedSize() {
+-    return uncompressedSize;
+-  }
+-
+   public int getDictionarySize() {
+     return dictionarySize;
+   }
+@@ -76,13 +72,13 @@ public class DictionaryPage {
+   }
+ 
+   public DictionaryPage copy() throws IOException {
+-    return new DictionaryPage(BytesInput.copy(bytes), uncompressedSize, dictionarySize, encoding);
++    return new DictionaryPage(BytesInput.copy(bytes), getUncompressedSize(), dictionarySize, encoding);
+   }
+ 
+ 
+   @Override
+   public String toString() {
+-    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + uncompressedSize + ", encoding=" + encoding + "]";
++    return "Page [bytes.size=" + bytes.size() + ", entryCount=" + dictionarySize + ", uncompressedSize=" + getUncompressedSize() + ", encoding=" + encoding + "]";
+   }
+ 
+ 
+diff --git a/parquet-column/src/main/java/parquet/column/page/Page.java b/parquet-column/src/main/java/parquet/column/page/Page.java
+index 192b2a9..e5ab636 100644
+--- a/parquet-column/src/main/java/parquet/column/page/Page.java
++++ b/parquet-column/src/main/java/parquet/column/page/Page.java
+@@ -1,145 +1,31 @@
+-/**
+- * Copyright 2012 Twitter, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+ package parquet.column.page;
+ 
+-import parquet.Log;
+-import parquet.bytes.BytesInput;
+-import parquet.column.Encoding;
+-import parquet.column.statistics.Statistics;
+-import parquet.column.statistics.BooleanStatistics;
+-
+ /**
+  * one page in a chunk
+  *
+  * @author Julien Le Dem
+  *
+  */
+-public class Page {
+-  private static final boolean DEBUG = Log.DEBUG;
+-  private static final Log LOG = Log.getLog(Page.class);
+-
+-  private static int nextId = 0;
++abstract public class Page {
+ 
+-  private final BytesInput bytes;
+-  private final int valueCount;
++  private final int compressedSize;
+   private final int uncompressedSize;
+-  private final Statistics statistics;
+-  private final Encoding rlEncoding;
+-  private final Encoding dlEncoding;
+-  private final Encoding valuesEncoding;
+-  private final int id;
+ 
+-  @Deprecated
+-  /**
+-   * @param bytes the bytes for this page
+-   * @param valueCount count of values in this page
+-   * @param uncompressedSize the uncompressed size of the page
+-   * @param rlEncoding the repetition level encoding for this page
+-   * @param dlEncoding the definition level encoding for this page
+-   * @param valuesEncoding the values encoding for this page
+-   * @param dlEncoding
+-   */
+-  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+-    this.bytes = bytes;
+-    this.valueCount = valueCount;
++  Page(int compressedSize, int uncompressedSize) {
++    super();
++    this.compressedSize = compressedSize;
+     this.uncompressedSize = uncompressedSize;
+-    this.statistics = new BooleanStatistics();
+-    this.rlEncoding = rlEncoding;
+-    this.dlEncoding = dlEncoding;
+-    this.valuesEncoding = valuesEncoding;
+-    this.id = nextId ++;
+-    if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
+-  }
+-  /**
+-   * @param bytes the bytes for this page
+-   * @param valueCount count of values in this page
+-   * @param uncompressedSize the uncompressed size of the page
+-   * @param statistics of the page's values (max, min, num_null)
+-   * @param rlEncoding the repetition level encoding for this page
+-   * @param dlEncoding the definition level encoding for this page
+-   * @param valuesEncoding the values encoding for this page
+-   * @param dlEncoding
+-   */
+-  public Page(BytesInput bytes, int valueCount, int uncompressedSize, Statistics stats, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) {
+-    this.bytes = bytes;
+-    this.valueCount = valueCount;
+-    this.uncompressedSize = uncompressedSize;
+-    this.statistics = stats;
+-    this.rlEncoding = rlEncoding;
+-    this.dlEncoding = dlEncoding;
+-    this.valuesEncoding = valuesEncoding;
+-    this.id = nextId ++;
+-    if (DEBUG) LOG.debug("new Page #"+id+" : " + bytes.size() + " bytes and " + valueCount + " records");
+-  }
+-  /**
+-   *
+-   * @return the bytes for the page
+-   */
+-  public BytesInput getBytes() {
+-    return bytes;
+   }
+ 
+-  /**
+-   *
+-   * @return the number of values in that page
+-   */
+-  public int getValueCount() {
+-    return valueCount;
++  public int getCompressedSize() {
++    return compressedSize;
+   }
+ 
+-  /**
+-   *
+-   * @return the uncompressed size of the page when the bytes are compressed
+-   */
++ /**
++  * @return the uncompressed size of the page when the bytes are compressed
++  */
+   public int getUncompressedSize() {
+     return uncompressedSize;
+   }
+ 
+-  /**
+-   *
+-   * @return the statistics for this page (max, min, num_nulls)
+-   */
+-  public Statistics getStatistics() {
+-    return statistics;
+-  }
+-
+-  /**
+-   * @return the definition level encoding for this page
+-   */
+-  public Encoding getDlEncoding() {
+-    return dlEncoding;
+-  }
+-
+-  /**
+-   * @return the repetition level encoding for this page
+-   */
+-  public Encoding getRlEncoding() {
+-    return rlEncoding;
+-  }
+-
+-  /**
+-   * @return the values encoding for this page
+-   */
+-  public Encoding getValueEncoding() {
+-    return valuesEncoding;
+-  }
+-
+-  @Override
+-  public String toString() {
+-    return "Page [id: " + id + ", bytes.size=" + bytes.size() + ", valueCount=" + valueCount + ", uncompressedSize=" + uncompressedSize + "]";
+-  }
+-
+-}
+\ No newline at end of file
++}
+diff --git a/parquet-column/src/main/java/parquet/column/page/PageReader.java b/parquet-column/src/main/java/parquet/column/page/PageReader.java
+index f2ef171..d115037 100644
+--- a/parquet-column/src/main/java/parquet/column/page/PageReader.java
++++ b/parquet-column/src/main/java/parquet/column/page/PageReader.java
+@@ -36,5 +36,5 @@ public interface PageReader {
+   /**
+    * @return the next page in that chunk or null if after the last page
+    */
+-  Page readPage();
++  DataPage readPage();
+ }
+diff --git a/parquet-column/src/main/java/parquet/column/page/PageWriter.java b/parquet-column/src/main/java/parquet/column/page/PageWriter.java
+index 5197e52..1d6aa52 100644
+--- a/parquet-column/src/main/java/parquet/column/page/PageWriter.java
++++ b/parquet-column/src/main/java/parquet/column/page/PageWriter.java
+@@ -29,29 +29,37 @@ import parquet.column.statistics.Statistics;
+  */
+ public interface PageWriter {
+ 
+-  @Deprecated
+   /**
+    * writes a single page
+    * @param bytesInput the bytes for the page
+    * @param valueCount the number of values in that page
++   * @param statistics the statistics for that page
+    * @param rlEncoding repetition level encoding
+    * @param dlEncoding definition level encoding
+    * @param valuesEncoding values encoding
+    * @throws IOException
+    */
+-  void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
++  void writePage(BytesInput bytesInput, int valueCount, Statistics<?> statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
+ 
+   /**
+-   * writes a single page
+-   * @param bytesInput the bytes for the page
+-   * @param valueCount the number of values in that page
+-   * @param statistics the statistics for that page
+-   * @param rlEncoding repetition level encoding
+-   * @param dlEncoding definition level encoding
+-   * @param valuesEncoding values encoding
++   * writes a single page in the new format
++   * @param rowCount the number of rows in this page
++   * @param nullCount the number of null values (out of valueCount)
++   * @param valueCount the number of values in that page (there could be multiple values per row for repeated fields)
++   * @param repetitionLevels the repetition levels encoded in RLE without any size header
++   * @param definitionLevels the definition levels encoded in RLE without any size header
++   * @param dataEncoding the encoding for the data
++   * @param data the data encoded with dataEncoding
++   * @param statistics optional stats for this page
++   * @param metadata optional free form key values
+    * @throws IOException
+    */
+-  void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding) throws IOException;
++  void writePageV2(
++      int rowCount, int nullCount, int valueCount,
++      BytesInput repetitionLevels, BytesInput definitionLevels,
++      Encoding dataEncoding,
++      BytesInput data,
++      Statistics<?> statistics) throws IOException;
+ 
+   /**
+    * @return the current size used in the memory buffer for that column chunk
+@@ -69,6 +77,10 @@ public interface PageWriter {
+    */
+   void writeDictionaryPage(DictionaryPage dictionaryPage) throws IOException;
+ 
+-  public abstract String memUsageString(String prefix);
++  /**
++   * @param prefix a prefix header to add at every line
++   * @return a string presenting a summary of how memory is used
++   */
++  String memUsageString(String prefix);
+ 
+ }
+diff --git a/parquet-column/src/main/java/parquet/column/values/ValuesWriter.java b/parquet-column/src/main/java/parquet/column/values/ValuesWriter.java
+index a0c949c..1b674f5 100644
+--- a/parquet-column/src/main/java/parquet/column/values/ValuesWriter.java
++++ b/parquet-column/src/main/java/parquet/column/values/ValuesWriter.java
+@@ -66,9 +66,8 @@ public abstract class ValuesWriter {
+   }
+ 
+   /**
+-   *
++   * ( > {@link #getBufferedMemorySize} )
+    * @return the allocated size of the buffer
+-   * ( > {@link #getBufferedMemorySize()() )
+    */
+   abstract public long getAllocatedSize();
+ 
+diff --git a/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridDecoder.java b/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridDecoder.java
+index 04d3eeb..e6e0cc5 100644
+--- a/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridDecoder.java
++++ b/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridDecoder.java
+@@ -20,7 +20,6 @@ import static parquet.Log.DEBUG;
+ import java.io.ByteArrayInputStream;
+ import java.io.DataInputStream;
+ import java.io.IOException;
+-import java.io.InputStream;
+ 
+ import parquet.Log;
+ import parquet.Preconditions;
+@@ -76,8 +75,8 @@ public class RunLengthBitPackingHybridDecoder {
+     return result;
+   }
+ 
+-  private void readNext() throws IOException {	
+-	Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
++  private void readNext() throws IOException {
++    Preconditions.checkArgument(in.available() > 0, "Reading past RLE/BitPacking stream.");
+     final int header = BytesUtils.readUnsignedVarInt(in);
+     mode = (header & 1) == 0 ? MODE.RLE : MODE.PACKED;
+     switch (mode) {
+@@ -92,7 +91,7 @@ public class RunLengthBitPackingHybridDecoder {
+       if (DEBUG) LOG.debug("reading " + currentCount + " values BIT PACKED");
+       currentBuffer = new int[currentCount]; // TODO: reuse a buffer
+       byte[] bytes = new byte[numGroups * bitWidth];
+-      // At the end of the file RLE data though, there might not be that many bytes left. 
++      // At the end of the file RLE data though, there might not be that many bytes left.
+       int bytesToRead = (int)Math.ceil(currentCount * bitWidth / 8.0);
+       bytesToRead = Math.min(bytesToRead, in.available());
+       new DataInputStream(in).readFully(bytes, 0, bytesToRead);
+diff --git a/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridValuesWriter.java b/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridValuesWriter.java
+index f30d3c5..ed0ac97 100644
+--- a/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridValuesWriter.java
++++ b/parquet-column/src/main/java/parquet/column/values/rle/RunLengthBitPackingHybridValuesWriter.java
+@@ -15,12 +15,10 @@
+  */
+ package parquet.column.values.rle;
+ 
+-import java.io.ByteArrayOutputStream;
+ import java.io.IOException;
+ 
+ import parquet.Ints;
+ import parquet.bytes.BytesInput;
+-import parquet.bytes.BytesUtils;
+ import parquet.column.Encoding;
+ import parquet.column.values.ValuesWriter;
+ import parquet.io.ParquetEncodingException;
+@@ -30,11 +28,9 @@ import parquet.io.ParquetEncodingException;
+  */
+ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
+   private final RunLengthBitPackingHybridEncoder encoder;
+-  private final ByteArrayOutputStream length;
+ 
+   public RunLengthBitPackingHybridValuesWriter(int bitWidth, int initialCapacity) {
+     this.encoder = new RunLengthBitPackingHybridEncoder(bitWidth, initialCapacity);
+-    this.length = new ByteArrayOutputStream(4);
+   }
+ 
+   @Override
+@@ -45,7 +41,7 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
+       throw new ParquetEncodingException(e);
+     }
+   }
+-  
++
+   @Override
+   public void writeBoolean(boolean v) {
+     writeInteger(v ? 1 : 0);
+@@ -66,8 +62,7 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
+     try {
+       // prepend the length of the column
+       BytesInput rle = encoder.toBytes();
+-      BytesUtils.writeIntLittleEndian(length, Ints.checkedCast(rle.size()));
+-      return BytesInput.concat(BytesInput.from(length.toByteArray()), rle);
++      return BytesInput.concat(BytesInput.fromInt(Ints.checkedCast(rle.size())), rle);
+     } catch (IOException e) {
+       throw new ParquetEncodingException(e);
+     }
+@@ -81,7 +76,6 @@ public class RunLengthBitPackingHybridValuesWriter extends ValuesWriter {
+   @Override
+   public void reset() {
+     encoder.reset();
+-    length.reset();
+   }
+ 
+   @Override
+diff --git a/parquet-column/src/main/java/parquet/io/MessageColumnIO.java b/parquet-column/src/main/java/parquet/io/MessageColumnIO.java
+index bc048b0..3cf664f 100644
+--- a/parquet-column/src/main/java/parquet/io/MessageColumnIO.java
++++ b/parquet-column/src/main/java/parquet/io/MessageColumnIO.java
+@@ -168,9 +168,11 @@ public class MessageColumnIO extends GroupColumnIO {
+     private final FieldsMarker[] fieldsWritten;
+     private final int[] r;
+     private final ColumnWriter[] columnWriter;
++    private final ColumnWriteStore columns;
+     private boolean emptyField = true;
+ 
+     public MessageColumnIORecordConsumer(ColumnWriteStore columns) {
++      this.columns = columns;
+       int maxDepth = 0;
+       this.columnWriter = new ColumnWriter[MessageColumnIO.this.getLeaves().size()];
+       for (PrimitiveColumnIO primitiveColumnIO : MessageColumnIO.this.getLeaves()) {
+@@ -214,6 +216,7 @@ public class MessageColumnIO extends GroupColumnIO {
+     @Override
+     public void endMessage() {
+       writeNullForMissingFieldsAtCurrentLevel();
++      columns.endRecord();
+       if (DEBUG) log("< MESSAGE END >");
+       if (DEBUG) printState();
+     }
+diff --git a/parquet-column/src/test/java/parquet/column/impl/TestColumnReaderImpl.java b/parquet-column/src/test/java/parquet/column/impl/TestColumnReaderImpl.java
+new file mode 100644
+index 0000000..325bf43
+--- /dev/null
++++ b/parquet-column/src/test/java/parquet/column/impl/TestColumnReaderImpl.java
+@@ -0,0 +1,105 @@
++package parquet.column.impl;
++
++import static junit.framework.Assert.assertEquals;
++import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
++
++import java.util.List;
++
++import org.junit.Test;
++
++import parquet.column.ColumnDescriptor;
++import parquet.column.ColumnReader;
++import parquet.column.ParquetProperties;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV2;
++import parquet.column.page.mem.MemPageReader;
++import parquet.column.page.mem.MemPageWriter;
++import parquet.io.api.Binary;
++import parquet.io.api.PrimitiveConverter;
++import parquet.schema.MessageType;
++import parquet.schema.MessageTypeParser;
++
++public class TestColumnReaderImpl {
++
++  private int rows = 13001;
++
++  private static final class ValidatingConverter extends PrimitiveConverter {
++    int count;
++
++    @Override
++    public void addBinary(Binary value) {
++      assertEquals("bar" + count % 10, value.toStringUsingUTF8());
++      ++ count;
++    }
++  }
++
++  @Test
++  public void test() {
++    MessageType schema = MessageTypeParser.parseMessageType("message test { required binary foo; }");
++    ColumnDescriptor col = schema.getColumns().get(0);
++    MemPageWriter pageWriter = new MemPageWriter();
++    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, 1024, new ParquetProperties(1024, PARQUET_2_0, true));
++    for (int i = 0; i < rows; i++) {
++      columnWriterV2.write(Binary.fromString("bar" + i % 10), 0, 0);
++      if ((i + 1) % 1000 == 0) {
++        columnWriterV2.writePage(i);
++      }
++    }
++    columnWriterV2.writePage(rows);
++    columnWriterV2.finalizeColumnChunk();
++    List<DataPage> pages = pageWriter.getPages();
++    int valueCount = 0;
++    int rowCount = 0;
++    for (DataPage dataPage : pages) {
++      valueCount += dataPage.getValueCount();
++      rowCount += ((DataPageV2)dataPage).getRowCount();
++    }
++    assertEquals(rows, rowCount);
++    assertEquals(rows, valueCount);
++    MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
++    ValidatingConverter converter = new ValidatingConverter();
++    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter);
++    for (int i = 0; i < rows; i++) {
++      assertEquals(0, columnReader.getCurrentRepetitionLevel());
++      assertEquals(0, columnReader.getCurrentDefinitionLevel());
++      columnReader.writeCurrentValueToConverter();
++      columnReader.consume();
++    }
++    assertEquals(rows, converter.count);
++  }
++
++  @Test
++  public void testOptional() {
++    MessageType schema = MessageTypeParser.parseMessageType("message test { optional binary foo; }");
++    ColumnDescriptor col = schema.getColumns().get(0);
++    MemPageWriter pageWriter = new MemPageWriter();
++    ColumnWriterV2 columnWriterV2 = new ColumnWriterV2(col, pageWriter, 1024, new ParquetProperties(1024, PARQUET_2_0, true));
++    for (int i = 0; i < rows; i++) {
++      columnWriterV2.writeNull(0, 0);
++      if ((i + 1) % 1000 == 0) {
++        columnWriterV2.writePage(i);
++      }
++    }
++    columnWriterV2.writePage(rows);
++    columnWriterV2.finalizeColumnChunk();
++    List<DataPage> pages = pageWriter.getPages();
++    int valueCount = 0;
++    int rowCount = 0;
++    for (DataPage dataPage : pages) {
++      valueCount += dataPage.getValueCount();
++      rowCount += ((DataPageV2)dataPage).getRowCount();
++    }
++    assertEquals(rows, rowCount);
++    assertEquals(rows, valueCount);
++    MemPageReader pageReader = new MemPageReader((long)rows, pages.iterator(), pageWriter.getDictionaryPage());
++    ValidatingConverter converter = new ValidatingConverter();
++    ColumnReader columnReader = new ColumnReaderImpl(col, pageReader, converter);
++    for (int i = 0; i < rows; i++) {
++      assertEquals(0, columnReader.getCurrentRepetitionLevel());
++      assertEquals(0, columnReader.getCurrentDefinitionLevel());
++      columnReader.consume();
++    }
++    assertEquals(0, converter.count);
++  }
++
++}
+diff --git a/parquet-column/src/test/java/parquet/column/mem/TestMemColumn.java b/parquet-column/src/test/java/parquet/column/mem/TestMemColumn.java
+index 46b3b8f..a386bbb 100644
+--- a/parquet-column/src/test/java/parquet/column/mem/TestMemColumn.java
++++ b/parquet-column/src/test/java/parquet/column/mem/TestMemColumn.java
+@@ -23,17 +23,15 @@ import parquet.Log;
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.ColumnReader;
+ import parquet.column.ColumnWriter;
+-import parquet.column.ParquetProperties;
+ import parquet.column.ParquetProperties.WriterVersion;
+ import parquet.column.impl.ColumnReadStoreImpl;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.example.DummyRecordConverter;
+ import parquet.io.api.Binary;
+ import parquet.schema.MessageType;
+ import parquet.schema.MessageTypeParser;
+ 
+-
+ public class TestMemColumn {
+   private static final Log LOG = Log.getLog(TestMemColumn.class);
+ 
+@@ -42,9 +40,10 @@ public class TestMemColumn {
+     MessageType schema = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
+     ColumnDescriptor path = schema.getColumnDescription(new String[] {"foo", "bar"});
+     MemPageStore memPageStore = new MemPageStore(10);
+-    ColumnWriter columnWriter = getColumnWriter(path, memPageStore);
++    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
++    ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
+     columnWriter.write(42l, 0, 0);
+-    columnWriter.flush();
++    memColumnsStore.flush();
+ 
+     ColumnReader columnReader = getColumnReader(memPageStore, path, schema);
+     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
+@@ -56,7 +55,7 @@ public class TestMemColumn {
+   }
+ 
+   private ColumnWriter getColumnWriter(ColumnDescriptor path, MemPageStore memPageStore) {
+-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
++    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
+     return columnWriter;
+   }
+@@ -75,13 +74,13 @@ public class TestMemColumn {
+     String[] col = new String[]{"foo", "bar"};
+     MemPageStore memPageStore = new MemPageStore(10);
+ 
+-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
++    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+     ColumnDescriptor path1 = mt.getColumnDescription(col);
+     ColumnDescriptor path = path1;
+ 
+     ColumnWriter columnWriter = memColumnsStore.getColumnWriter(path);
+     columnWriter.write(Binary.fromString("42"), 0, 0);
+-    columnWriter.flush();
++    memColumnsStore.flush();
+ 
+     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
+     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
+@@ -97,7 +96,7 @@ public class TestMemColumn {
+     MessageType mt = MessageTypeParser.parseMessageType("message msg { required group foo { required int64 bar; } }");
+     String[] col = new String[]{"foo", "bar"};
+     MemPageStore memPageStore = new MemPageStore(10);
+-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
++    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+     ColumnDescriptor path1 = mt.getColumnDescription(col);
+     ColumnDescriptor path = path1;
+ 
+@@ -105,7 +104,7 @@ public class TestMemColumn {
+     for (int i = 0; i < 2000; i++) {
+       columnWriter.write(42l, 0, 0);
+     }
+-    columnWriter.flush();
++    memColumnsStore.flush();
+ 
+     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
+     for (int i = 0; i < columnReader.getTotalValueCount(); i++) {
+@@ -121,7 +120,7 @@ public class TestMemColumn {
+     MessageType mt = MessageTypeParser.parseMessageType("message msg { repeated group foo { repeated int64 bar; } }");
+     String[] col = new String[]{"foo", "bar"};
+     MemPageStore memPageStore = new MemPageStore(10);
+-    ColumnWriteStoreImpl memColumnsStore = newColumnWriteStoreImpl(memPageStore);
++    ColumnWriteStoreV1 memColumnsStore = newColumnWriteStoreImpl(memPageStore);
+     ColumnDescriptor path1 = mt.getColumnDescription(col);
+     ColumnDescriptor path = path1;
+ 
+@@ -138,7 +137,7 @@ public class TestMemColumn {
+         columnWriter.writeNull(r, d);
+       }
+     }
+-    columnWriter.flush();
++    memColumnsStore.flush();
+ 
+     ColumnReader columnReader = getColumnReader(memPageStore, path, mt);
+     int i = 0;
+@@ -156,7 +155,7 @@ public class TestMemColumn {
+     }
+   }
+ 
+-  private ColumnWriteStoreImpl newColumnWriteStoreImpl(MemPageStore memPageStore) {
+-    return new ColumnWriteStoreImpl(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
++  private ColumnWriteStoreV1 newColumnWriteStoreImpl(MemPageStore memPageStore) {
++    return new ColumnWriteStoreV1(memPageStore, 2048, 2048, 2048, false, WriterVersion.PARQUET_1_0);
+   }
+ }
+diff --git a/parquet-column/src/test/java/parquet/column/mem/TestMemPageStore.java b/parquet-column/src/test/java/parquet/column/mem/TestMemPageStore.java
+index f33a531..3c0acd3 100644
+--- a/parquet-column/src/test/java/parquet/column/mem/TestMemPageStore.java
++++ b/parquet-column/src/test/java/parquet/column/mem/TestMemPageStore.java
+@@ -23,7 +23,7 @@ import org.junit.Test;
+ 
+ import parquet.bytes.BytesInput;
+ import parquet.column.ColumnDescriptor;
+-import parquet.column.page.Page;
++import parquet.column.page.DataPage;
+ import parquet.column.page.PageReader;
+ import parquet.column.page.PageWriter;
+ import parquet.column.page.mem.MemPageStore;
+@@ -49,7 +49,7 @@ public class TestMemPageStore {
+     System.out.println(totalValueCount);
+     int total = 0;
+     do {
+-      Page readPage = pageReader.readPage();
++      DataPage readPage = pageReader.readPage();
+       total += readPage.getValueCount();
+       System.out.println(readPage);
+       // TODO: assert
+diff --git a/parquet-column/src/test/java/parquet/column/page/mem/MemPageReader.java b/parquet-column/src/test/java/parquet/column/page/mem/MemPageReader.java
+index e6a5d7a..523d87c 100644
+--- a/parquet-column/src/test/java/parquet/column/page/mem/MemPageReader.java
++++ b/parquet-column/src/test/java/parquet/column/page/mem/MemPageReader.java
+@@ -22,7 +22,7 @@ import java.util.Iterator;
+ 
+ import parquet.Log;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
++import parquet.column.page.DataPage;
+ import parquet.column.page.PageReader;
+ import parquet.io.ParquetDecodingException;
+ 
+@@ -31,10 +31,10 @@ public class MemPageReader implements PageReader {
+   private static final Log LOG = Log.getLog(MemPageReader.class);
+ 
+   private final long totalValueCount;
+-  private final Iterator<Page> pages;
++  private final Iterator<DataPage> pages;
+   private final DictionaryPage dictionaryPage;
+ 
+-  public MemPageReader(long totalValueCount, Iterator<Page> pages, DictionaryPage dictionaryPage) {
++  public MemPageReader(long totalValueCount, Iterator<DataPage> pages, DictionaryPage dictionaryPage) {
+     super();
+     checkNotNull(pages, "pages");
+     this.totalValueCount = totalValueCount;
+@@ -48,9 +48,9 @@ public class MemPageReader implements PageReader {
+   }
+ 
+   @Override
+-  public Page readPage() {
++  public DataPage readPage() {
+     if (pages.hasNext()) {
+-      Page next = pages.next();
++      DataPage next = pages.next();
+       if (DEBUG) LOG.debug("read page " + next);
+       return next;
+     } else {
+diff --git a/parquet-column/src/test/java/parquet/column/page/mem/MemPageStore.java b/parquet-column/src/test/java/parquet/column/page/mem/MemPageStore.java
+index c3a9fd0..6facf34 100644
+--- a/parquet-column/src/test/java/parquet/column/page/mem/MemPageStore.java
++++ b/parquet-column/src/test/java/parquet/column/page/mem/MemPageStore.java
+@@ -23,7 +23,7 @@ import java.util.Map;
+ import parquet.Log;
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.UnknownColumnException;
+-import parquet.column.page.Page;
++import parquet.column.page.DataPage;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.PageReader;
+ import parquet.column.page.PageWriteStore;
+@@ -58,7 +58,7 @@ public class MemPageStore implements PageReadStore, PageWriteStore {
+     if (pageWriter == null) {
+       throw new UnknownColumnException(descriptor);
+     }
+-    List<Page> pages = new ArrayList<Page>(pageWriter.getPages());
++    List<DataPage> pages = new ArrayList<DataPage>(pageWriter.getPages());
+     if (Log.DEBUG) LOG.debug("initialize page reader with "+ pageWriter.getTotalValueCount() + " values and " + pages.size() + " pages");
+     return new MemPageReader(pageWriter.getTotalValueCount(), pages.iterator(), pageWriter.getDictionaryPage());
+   }
+diff --git a/parquet-column/src/test/java/parquet/column/page/mem/MemPageWriter.java b/parquet-column/src/test/java/parquet/column/page/mem/MemPageWriter.java
+index 01b0873..c70e023 100644
+--- a/parquet-column/src/test/java/parquet/column/page/mem/MemPageWriter.java
++++ b/parquet-column/src/test/java/parquet/column/page/mem/MemPageWriter.java
+@@ -16,52 +16,57 @@
+ package parquet.column.page.mem;
+ 
+ import static parquet.Log.DEBUG;
++import static parquet.bytes.BytesInput.copy;
+ 
+ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.List;
++import java.util.Map;
+ 
+ import parquet.Log;
+ import parquet.bytes.BytesInput;
+ import parquet.column.Encoding;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
++import parquet.column.page.DataPage;
+ import parquet.column.page.PageWriter;
+ import parquet.column.statistics.Statistics;
+ import parquet.io.ParquetEncodingException;
+ 
+-
+ public class MemPageWriter implements PageWriter {
+   private static final Log LOG = Log.getLog(MemPageWriter.class);
+ 
+-  private final List<Page> pages = new ArrayList<Page>();
++  private final List<DataPage> pages = new ArrayList<DataPage>();
+   private DictionaryPage dictionaryPage;
+   private long memSize = 0;
+   private long totalValueCount = 0;
+ 
+-  @Deprecated
+   @Override
+-  public void writePage(BytesInput bytesInput, int valueCount, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
++  public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
+       throws IOException {
+     if (valueCount == 0) {
+       throw new ParquetEncodingException("illegal page of 0 values");
+     }
+     memSize += bytesInput.size();
+-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), rlEncoding, dlEncoding, valuesEncoding));
++    pages.add(new DataPageV1(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
+     totalValueCount += valueCount;
+     if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
+   }
+ 
+   @Override
+-  public void writePage(BytesInput bytesInput, int valueCount, Statistics statistics, Encoding rlEncoding, Encoding dlEncoding, Encoding valuesEncoding)
+-      throws IOException {
++  public void writePageV2(int rowCount, int nullCount, int valueCount,
++      BytesInput repetitionLevels, BytesInput definitionLevels,
++      Encoding dataEncoding, BytesInput data, Statistics<?> statistics) throws IOException {
+     if (valueCount == 0) {
+       throw new ParquetEncodingException("illegal page of 0 values");
+     }
+-    memSize += bytesInput.size();
+-    pages.add(new Page(BytesInput.copy(bytesInput), valueCount, (int)bytesInput.size(), statistics, rlEncoding, dlEncoding, valuesEncoding));
++    long size = repetitionLevels.size() + definitionLevels.size() + data.size();
++    memSize += size;
++    pages.add(DataPageV2.uncompressed(rowCount, nullCount, valueCount, copy(repetitionLevels), copy(definitionLevels), dataEncoding, copy(data), statistics));
+     totalValueCount += valueCount;
+-    if (DEBUG) LOG.debug("page written for " + bytesInput.size() + " bytes and " + valueCount + " records");
++    if (DEBUG) LOG.debug("page written for " + size + " bytes and " + valueCount + " records");
++
+   }
+ 
+   @Override
+@@ -69,7 +74,7 @@ public class MemPageWriter implements PageWriter {
+     return memSize;
+   }
+ 
+-  public List<Page> getPages() {
++  public List<DataPage> getPages() {
+     return pages;
+   }
+ 
+diff --git a/parquet-column/src/test/java/parquet/io/PerfTest.java b/parquet-column/src/test/java/parquet/io/PerfTest.java
+index da46b51..9cd31e3 100644
+--- a/parquet-column/src/test/java/parquet/io/PerfTest.java
++++ b/parquet-column/src/test/java/parquet/io/PerfTest.java
+@@ -25,7 +25,7 @@ import java.util.logging.Level;
+ 
+ import parquet.Log;
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.example.DummyRecordConverter;
+ import parquet.example.data.GroupWriter;
+@@ -74,7 +74,7 @@ public class PerfTest {
+ 
+ 
+   private static void write(MemPageStore memPageStore) {
+-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
++    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
+     MessageColumnIO columnIO = newColumnFactory(schema);
+ 
+     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+@@ -90,7 +90,7 @@ public class PerfTest {
+     write(memPageStore, groupWriter, 1000000);
+     columns.flush();
+     System.out.println();
+-    System.out.println(columns.memSize()+" bytes used total");
++    System.out.println(columns.getBufferedSize() + " bytes used total");
+     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+   }
+ 
+diff --git a/parquet-column/src/test/java/parquet/io/TestColumnIO.java b/parquet-column/src/test/java/parquet/io/TestColumnIO.java
+index dddbcca..d4442df 100644
+--- a/parquet-column/src/test/java/parquet/io/TestColumnIO.java
++++ b/parquet-column/src/test/java/parquet/io/TestColumnIO.java
+@@ -34,20 +34,18 @@ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Iterator;
+ import java.util.List;
+-import java.util.Set;
+ 
+ import org.junit.Assert;
+ import org.junit.Test;
+-
+ import org.junit.runner.RunWith;
+ import org.junit.runners.Parameterized;
++
+ import parquet.Log;
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.ColumnWriteStore;
+ import parquet.column.ColumnWriter;
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.statistics.Statistics;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.example.data.Group;
+@@ -285,7 +283,7 @@ public class TestColumnIO {
+ 
+   private void writeGroups(MessageType writtenSchema, MemPageStore memPageStore, Group... groups) {
+     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
++    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+     MessageColumnIO columnIO = columnIOFactory.getColumnIO(writtenSchema);
+     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), writtenSchema);
+     for (Group group : groups) {
+@@ -303,7 +301,7 @@ public class TestColumnIO {
+     log(r2);
+ 
+     MemPageStore memPageStore = new MemPageStore(2);
+-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
++    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+ 
+     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+     {
+@@ -453,7 +451,7 @@ public class TestColumnIO {
+ 
+   private void testSchema(MessageType messageSchema, List<Group> groups) {
+     MemPageStore memPageStore = new MemPageStore(groups.size());
+-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
++    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+ 
+     ColumnIOFactory columnIOFactory = new ColumnIOFactory(true);
+     MessageColumnIO columnIO = columnIOFactory.getColumnIO(messageSchema);
+@@ -505,7 +503,7 @@ public class TestColumnIO {
+   @Test
+   public void testPushParser() {
+     MemPageStore memPageStore = new MemPageStore(1);
+-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
++    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+     MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+     new GroupWriter(columnIO.getRecordWriter(columns), schema).write(r1);
+     columns.flush();
+@@ -515,14 +513,14 @@ public class TestColumnIO {
+ 
+   }
+ 
+-  private ColumnWriteStoreImpl newColumnWriteStore(MemPageStore memPageStore) {
+-    return new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
++  private ColumnWriteStoreV1 newColumnWriteStore(MemPageStore memPageStore) {
++    return new ColumnWriteStoreV1(memPageStore, 800, 800, 800, useDictionary, WriterVersion.PARQUET_1_0);
+   }
+ 
+   @Test
+   public void testEmptyField() {
+     MemPageStore memPageStore = new MemPageStore(1);
+-    ColumnWriteStoreImpl columns = newColumnWriteStore(memPageStore);
++    ColumnWriteStoreV1 columns = newColumnWriteStore(memPageStore);
+     MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+     recordWriter.startMessage();
+@@ -579,77 +577,95 @@ public class TestColumnIO {
+         "[Name, Url]: http://C, r:0, d:2",
+         "[Name, Language, Code]: null, r:0, d:1",
+         "[Name, Language, Country]: null, r:0, d:1"
+-
+     };
+ 
+-    ColumnWriteStore columns = new ColumnWriteStore() {
+-      int counter = 0;
++    ValidatingColumnWriteStore columns = new ValidatingColumnWriteStore(expected);
++    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
++    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
++    groupWriter.write(r1);
++    groupWriter.write(r2);
++    columns.validate();
++  }
++}
++final class ValidatingColumnWriteStore implements ColumnWriteStore {
++  private final String[] expected;
++  int counter = 0;
++
++  ValidatingColumnWriteStore(String[] expected) {
++    this.expected = expected;
++  }
++
++  @Override
++  public ColumnWriter getColumnWriter(final ColumnDescriptor path) {
++    return new ColumnWriter() {
++      private void validate(Object value, int repetitionLevel,
++          int definitionLevel) {
++        String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
++        assertEquals("event #" + counter, expected[counter], actual);
++        ++ counter;
++      }
++
++      @Override
++      public void writeNull(int repetitionLevel, int definitionLevel) {
++        validate(null, repetitionLevel, definitionLevel);
++      }
++
++      @Override
++      public void write(Binary value, int repetitionLevel, int definitionLevel) {
++        validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
++      }
++
++      @Override
++      public void write(boolean value, int repetitionLevel, int definitionLevel) {
++        validate(value, repetitionLevel, definitionLevel);
++      }
++
++      @Override
++      public void write(int value, int repetitionLevel, int definitionLevel) {
++        validate(value, repetitionLevel, definitionLevel);
++      }
++
++      @Override
++      public void write(long value, int repetitionLevel, int definitionLevel) {
++        validate(value, repetitionLevel, definitionLevel);
++      }
+ 
+       @Override
+-      public ColumnWriter getColumnWriter(final ColumnDescriptor path) {
+-        return new ColumnWriter() {
+-          private void validate(Object value, int repetitionLevel,
+-              int definitionLevel) {
+-            String actual = Arrays.toString(path.getPath())+": "+value+", r:"+repetitionLevel+", d:"+definitionLevel;
+-            assertEquals("event #" + counter, expected[counter], actual);
+-            ++ counter;
+-          }
+-
+-          @Override
+-          public void writeNull(int repetitionLevel, int definitionLevel) {
+-            validate(null, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(Binary value, int repetitionLevel, int definitionLevel) {
+-            validate(value.toStringUsingUTF8(), repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(boolean value, int repetitionLevel, int definitionLevel) {
+-            validate(value, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(int value, int repetitionLevel, int definitionLevel) {
+-            validate(value, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(long value, int repetitionLevel, int definitionLevel) {
+-            validate(value, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(float value, int repetitionLevel, int definitionLevel) {
+-            validate(value, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void write(double value, int repetitionLevel, int definitionLevel) {
+-            validate(value, repetitionLevel, definitionLevel);
+-          }
+-
+-          @Override
+-          public void flush() {
+-            throw new UnsupportedOperationException();
+-          }
+-
+-          @Override
+-          public long getBufferedSizeInMemory() {
+-            throw new UnsupportedOperationException();
+-          }
+-        };
++      public void write(float value, int repetitionLevel, int definitionLevel) {
++        validate(value, repetitionLevel, definitionLevel);
+       }
++
+       @Override
+-      public void flush() {
+-        assertEquals("read all events", expected.length, counter);
++      public void write(double value, int repetitionLevel, int definitionLevel) {
++        validate(value, repetitionLevel, definitionLevel);
+       }
+     };
+-    MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+-    GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+-    groupWriter.write(r1);
+-    groupWriter.write(r2);
+-    columns.flush();
++  }
++
++  public void validate() {
++    assertEquals("read all events", expected.length, counter);
++  }
++
++  @Override
++  public void endRecord() {
++  }
++
++  @Override
++  public void flush() {
++  }
++
++  @Override
++  public long getAllocatedSize() {
++    return 0;
++  }
++
++  @Override
++  public long getBufferedSize() {
++    return 0;
++  }
++
++  @Override
++  public String memUsageString() {
++    return null;
+   }
+ }
+diff --git a/parquet-column/src/test/java/parquet/io/TestFiltered.java b/parquet-column/src/test/java/parquet/io/TestFiltered.java
+index 0107b36..7acf6f1 100644
+--- a/parquet-column/src/test/java/parquet/io/TestFiltered.java
++++ b/parquet-column/src/test/java/parquet/io/TestFiltered.java
+@@ -21,7 +21,7 @@ import java.util.List;
+ import org.junit.Test;
+ 
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.example.data.Group;
+ import parquet.example.data.GroupWriter;
+@@ -254,7 +254,7 @@ public class TestFiltered {
+ 
+   private MemPageStore writeTestRecords(MessageColumnIO columnIO, int number) {
+     MemPageStore memPageStore = new MemPageStore(number * 2);
+-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
++    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 800, 800, 800, false, WriterVersion.PARQUET_1_0);
+ 
+     GroupWriter groupWriter = new GroupWriter(columnIO.getRecordWriter(columns), schema);
+     for ( int i = 0; i < number; i++ ) {
+diff --git a/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java b/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
+index b134264..198b654 100644
+--- a/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
++++ b/parquet-hadoop/src/main/java/parquet/format/converter/ParquetMetadataConverter.java
+@@ -15,6 +15,9 @@
+  */
+ package parquet.format.converter;
+ 
++import static parquet.format.Util.readFileMetaData;
++import static parquet.format.Util.writePageHeader;
++
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.OutputStream;
+@@ -29,13 +32,13 @@ import java.util.Map;
+ import java.util.Map.Entry;
+ import java.util.Set;
+ 
+-import org.apache.hadoop.io.UTF8;
+ import parquet.Log;
+ import parquet.common.schema.ColumnPath;
+ import parquet.format.ColumnChunk;
+ import parquet.format.ColumnMetaData;
+ import parquet.format.ConvertedType;
+ import parquet.format.DataPageHeader;
++import parquet.format.DataPageHeaderV2;
+ import parquet.format.DictionaryPageHeader;
+ import parquet.format.Encoding;
+ import parquet.format.FieldRepetitionType;
+@@ -60,9 +63,6 @@ import parquet.schema.PrimitiveType.PrimitiveTypeName;
+ import parquet.schema.Type.Repetition;
+ import parquet.schema.TypeVisitor;
+ import parquet.schema.Types;
+-import static java.lang.Math.min;
+-import static parquet.format.Util.readFileMetaData;
+-import static parquet.format.Util.writePageHeader;
+ 
+ public class ParquetMetadataConverter {
+   private static final Log LOG = Log.getLog(ParquetMetadataConverter.class);
+@@ -671,14 +671,49 @@ public class ParquetMetadataConverter {
+       parquet.column.Encoding valuesEncoding) {
+     PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE, uncompressedSize, compressedSize);
+     // TODO: pageHeader.crc = ...;
+-    pageHeader.data_page_header = new DataPageHeader(
++    pageHeader.setData_page_header(new DataPageHeader(
+         valueCount,
+         getEncoding(valuesEncoding),
+         getEncoding(dlEncoding),
+-        getEncoding(rlEncoding));
++        getEncoding(rlEncoding)));
++    if (!statistics.isEmpty()) {
++      pageHeader.getData_page_header().setStatistics(toParquetStatistics(statistics));
++    }
++    return pageHeader;
++  }
++
++  public void writeDataPageV2Header(
++      int uncompressedSize, int compressedSize,
++      int valueCount, int nullCount, int rowCount,
++      parquet.column.statistics.Statistics statistics,
++      parquet.column.Encoding dataEncoding,
++      int rlByteLength, int dlByteLength,
++      OutputStream to) throws IOException {
++    writePageHeader(
++        newDataPageV2Header(
++            uncompressedSize, compressedSize,
++            valueCount, nullCount, rowCount,
++            statistics,
++            dataEncoding,
++            rlByteLength, dlByteLength), to);
++  }
++
++  private PageHeader newDataPageV2Header(
++      int uncompressedSize, int compressedSize,
++      int valueCount, int nullCount, int rowCount,
++      parquet.column.statistics.Statistics<?> statistics,
++      parquet.column.Encoding dataEncoding,
++      int rlByteLength, int dlByteLength) {
++    // TODO: pageHeader.crc = ...;
++    DataPageHeaderV2 dataPageHeaderV2 = new DataPageHeaderV2(
++        valueCount, nullCount, rowCount,
++        getEncoding(dataEncoding),
++        dlByteLength, rlByteLength);
+     if (!statistics.isEmpty()) {
+-      pageHeader.data_page_header.setStatistics(toParquetStatistics(statistics));
++      dataPageHeaderV2.setStatistics(toParquetStatistics(statistics));
+     }
++    PageHeader pageHeader = new PageHeader(PageType.DATA_PAGE_V2, uncompressedSize, compressedSize);
++    pageHeader.setData_page_header_v2(dataPageHeaderV2);
+     return pageHeader;
+   }
+ 
+@@ -686,7 +721,7 @@ public class ParquetMetadataConverter {
+       int uncompressedSize, int compressedSize, int valueCount,
+       parquet.column.Encoding valuesEncoding, OutputStream to) throws IOException {
+     PageHeader pageHeader = new PageHeader(PageType.DICTIONARY_PAGE, uncompressedSize, compressedSize);
+-    pageHeader.dictionary_page_header = new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding));
++    pageHeader.setDictionary_page_header(new DictionaryPageHeader(valueCount, getEncoding(valuesEncoding)));
+     writePageHeader(pageHeader, to);
+   }
+ 
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageReadStore.java b/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageReadStore.java
+index 2910b9f..b6809a4 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageReadStore.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageReadStore.java
+@@ -21,13 +21,17 @@ import java.util.LinkedList;
+ import java.util.List;
+ import java.util.Map;
+ 
++import parquet.Ints;
+ import parquet.Log;
+ import parquet.column.ColumnDescriptor;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.PageReader;
+ import parquet.hadoop.CodecFactory.BytesDecompressor;
++import parquet.io.ParquetDecodingException;
+ 
+ /**
+  * TODO: should this actually be called RowGroupImpl or something?
+@@ -49,15 +53,15 @@ class ColumnChunkPageReadStore implements PageReadStore {
+ 
+     private final BytesDecompressor decompressor;
+     private final long valueCount;
+-    private final List<Page> compressedPages;
++    private final List<DataPage> compressedPages;
+     private final DictionaryPage compressedDictionaryPage;
+ 
+-    ColumnChunkPageReader(BytesDecompressor decompressor, List<Page> compressedPages, DictionaryPage compressedDictionaryPage) {
++    ColumnChunkPageReader(BytesDecompressor decompressor, List<DataPage> compressedPages, DictionaryPage compressedDictionaryPage) {
+       this.decompressor = decompressor;
+-      this.compressedPages = new LinkedList<Page>(compressedPages);
++      this.compressedPages = new LinkedList<DataPage>(compressedPages);
+       this.compressedDictionaryPage = compressedDictionaryPage;
+       int count = 0;
+-      for (Page p : compressedPages) {
++      for (DataPage p : compressedPages) {
+         count += p.getValueCount();
+       }
+       this.valueCount = count;
+@@ -69,23 +73,53 @@ class ColumnChunkPageReadStore implements PageReadStore {
+     }
+ 
+     @Override
+-    public Page readPage() {
++    public DataPage readPage() {
+       if (compressedPages.isEmpty()) {
+         return null;
+       }
+-      Page compressedPage = compressedPages.remove(0);
+-      try {
+-        return new Page(
+-            decompressor.decompress(compressedPage.getBytes(), compressedPage.getUncompressedSize()),
+-            compressedPage.getValueCount(),
+-            compressedPage.getUncompressedSize(),
+-            compressedPage.getStatistics(),
+-            compressedPage.getRlEncoding(),
+-            compressedPage.getDlEncoding(),
+-            compressedPage.getValueEncoding());
+-      } catch (IOException e) {
+-        throw new RuntimeException(e); // TODO: cleanup
+-      }
++      DataPage compressedPage = compressedPages.remove(0);
++      return compressedPage.accept(new DataPage.Visitor<DataPage>() {
++        @Override
++        public DataPage visit(DataPageV1 dataPageV1) {
++          try {
++            return new DataPageV1(
++                decompressor.decompress(dataPageV1.getBytes(), dataPageV1.getUncompressedSize()),
++                dataPageV1.getValueCount(),
++                dataPageV1.getUncompressedSize(),
++                dataPageV1.getStatistics(),
++                dataPageV1.getRlEncoding(),
++                dataPageV1.getDlEncoding(),
++                dataPageV1.getValueEncoding());
++          } catch (IOException e) {
++            throw new ParquetDecodingException("could not decompress page", e);
++          }
++        }
++
++        @Override
++        public DataPage visit(DataPageV2 dataPageV2) {
++          if (!dataPageV2.isCompressed()) {
++            return dataPageV2;
++          }
++          try {
++            int uncompressedSize = Ints.checkedCast(
++                dataPageV2.getUncompressedSize()
++                - dataPageV2.getDefinitionLevels().size()
++                - dataPageV2.getRepetitionLevels().size());
++            return DataPageV2.uncompressed(
++                dataPageV2.getRowCount(),
++                dataPageV2.getNullCount(),
++                dataPageV2.getValueCount(),
++                dataPageV2.getRepetitionLevels(),
++                dataPageV2.getDefinitionLevels(),
++                dataPageV2.getDataEncoding(),
++                decompressor.decompress(dataPageV2.getData(), uncompressedSize),
++                dataPageV2.getStatistics()
++                );
++          } catch (IOException e) {
++            throw new ParquetDecodingException("could not decompress page", e);
++          }
++        }
++      });
+     }
+ 
+     @Override
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageWriteStore.java b/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageWriteStore.java
+index 6d7f685..64fb7cd 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageWriteStore.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ColumnChunkPageWriteStore.java
+@@ -21,7 +21,6 @@ import java.io.IOException;
+ import java.util.ArrayList;
+ import java.util.HashMap;
+ import java.util.HashSet;
+-import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ 
+@@ -34,7 +33,6 @@ import parquet.column.page.DictionaryPage;
+ import parquet.column.page.PageWriteStore;
+ import parquet.column.page.PageWriter;
+ import parquet.column.statistics.Statistics;
+-import parquet.column.statistics.BooleanStatistics;
+ import parquet.format.converter.ParquetMetadataConverter;
+ import parquet.hadoop.CodecFactory.BytesCompressor;
+ import parquet.io.ParquetEncodingException;
+@@ -69,10 +67,10 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
+       this.totalStatistics = Statistics.getStatsBasedOnType(this.path.getType());
+     }
+ 
+-    @Deprecated
+     @Override
+     public void writePage(BytesInput bytes,
+                           int valueCount,
++                          Statistics statistics,
+                           Encoding rlEncoding,
+                           Encoding dlEncoding,
+                           Encoding valuesEncoding) throws IOException {
+@@ -80,16 +78,15 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
+       if (uncompressedSize > Integer.MAX_VALUE) {
+         throw new ParquetEncodingException(
+             "Cannot write page larger than Integer.MAX_VALUE bytes: " +
+-                uncompressedSize);
++            uncompressedSize);
+       }
+       BytesInput compressedBytes = compressor.compress(bytes);
+       long compressedSize = compressedBytes.size();
+       if (compressedSize > Integer.MAX_VALUE) {
+         throw new ParquetEncodingException(
+             "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
+-                + compressedSize);
++            + compressedSize);
+       }
+-      BooleanStatistics statistics = new BooleanStatistics(); // dummy stats object
+       parquetMetadataConverter.writeDataPageHeader(
+           (int)uncompressedSize,
+           (int)compressedSize,
+@@ -103,6 +100,7 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
+       this.compressedLength += compressedSize;
+       this.totalValueCount += valueCount;
+       this.pageCount += 1;
++      this.totalStatistics.mergeStatistics(statistics);
+       compressedBytes.writeAllTo(buf);
+       encodings.add(rlEncoding);
+       encodings.add(dlEncoding);
+@@ -110,43 +108,46 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
+     }
+ 
+     @Override
+-    public void writePage(BytesInput bytes,
+-                          int valueCount,
+-                          Statistics statistics,
+-                          Encoding rlEncoding,
+-                          Encoding dlEncoding,
+-                          Encoding valuesEncoding) throws IOException {
+-      long uncompressedSize = bytes.size();
+-      if (uncompressedSize > Integer.MAX_VALUE) {
+-        throw new ParquetEncodingException(
+-            "Cannot write page larger than Integer.MAX_VALUE bytes: " +
+-            uncompressedSize);
+-      }
+-      BytesInput compressedBytes = compressor.compress(bytes);
+-      long compressedSize = compressedBytes.size();
+-      if (compressedSize > Integer.MAX_VALUE) {
+-        throw new ParquetEncodingException(
+-            "Cannot write compressed page larger than Integer.MAX_VALUE bytes: "
+-            + compressedSize);
+-      }
+-      parquetMetadataConverter.writeDataPageHeader(
+-          (int)uncompressedSize,
+-          (int)compressedSize,
+-          valueCount,
++    public void writePageV2(
++        int rowCount, int nullCount, int valueCount,
++        BytesInput repetitionLevels, BytesInput definitionLevels,
++        Encoding dataEncoding, BytesInput data,
++        Statistics<?> statistics) throws IOException {
++      int rlByteLength = toIntWithCheck(repetitionLevels.size());
++      int dlByteLength = toIntWithCheck(definitionLevels.size());
++      int uncompressedSize = toIntWithCheck(
++          data.size() + repetitionLevels.size() + definitionLevels.size()
++      );
++      // TODO: decide if we compress
++      BytesInput compressedData = compressor.compress(data);
++      int compressedSize = toIntWithCheck(
++          compressedData.size() + repetitionLevels.size() + definitionLevels.size()
++      );
++      parquetMetadataConverter.writeDataPageV2Header(
++          uncompressedSize, compressedSize,
++          valueCount, nullCount, rowCount,
+           statistics,
+-          rlEncoding,
+-          dlEncoding,
+-          valuesEncoding,
++          dataEncoding,
++          rlByteLength, dlByteLength,
+           buf);
+       this.uncompressedLength += uncompressedSize;
+       this.compressedLength += compressedSize;
+       this.totalValueCount += valueCount;
+       this.pageCount += 1;
+       this.totalStatistics.mergeStatistics(statistics);
+-      compressedBytes.writeAllTo(buf);
+-      encodings.add(rlEncoding);
+-      encodings.add(dlEncoding);
+-      encodings.add(valuesEncoding);
++      repetitionLevels.writeAllTo(buf);
++      definitionLevels.writeAllTo(buf);
++      compressedData.writeAllTo(buf);
++      encodings.add(dataEncoding);
++    }
++
++    private int toIntWithCheck(long size) {
++      if (size > Integer.MAX_VALUE) {
++        throw new ParquetEncodingException(
++            "Cannot write page larger than " + Integer.MAX_VALUE + " bytes: " +
++            size);
++      }
++      return (int)size;
+     }
+ 
+     @Override
+@@ -199,28 +200,20 @@ class ColumnChunkPageWriteStore implements PageWriteStore {
+   }
+ 
+   private final Map<ColumnDescriptor, ColumnChunkPageWriter> writers = new HashMap<ColumnDescriptor, ColumnChunkPageWriter>();
+-  private final MessageType schema;
+-  private final BytesCompressor compressor;
+-  private final int initialSize;
+ 
+   public ColumnChunkPageWriteStore(BytesCompressor compressor, MessageType schema, int initialSize) {
+-    this.compressor = compressor;
+-    this.schema = schema;
+-    this.initialSize = initialSize;
++    for (ColumnDescriptor path : schema.getColumns()) {
++      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
++    }
+   }
+ 
+   @Override
+   public PageWriter getPageWriter(ColumnDescriptor path) {
+-    if (!writers.containsKey(path)) {
+-      writers.put(path,  new ColumnChunkPageWriter(path, compressor, initialSize));
+-    }
+     return writers.get(path);
+   }
+ 
+   public void flushToFileWriter(ParquetFileWriter writer) throws IOException {
+-    List<ColumnDescriptor> columns = schema.getColumns();
+-    for (ColumnDescriptor columnDescriptor : columns) {
+-      ColumnChunkPageWriter pageWriter = writers.get(columnDescriptor);
++    for (ColumnChunkPageWriter pageWriter : writers.values()) {
+       pageWriter.writeToFileWriter(writer);
+     }
+   }
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+index 45cc285..8dfd974 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+@@ -25,8 +25,11 @@ import java.io.IOException;
+ import java.util.Map;
+ 
+ import parquet.Log;
++import parquet.column.ColumnWriteStore;
++import parquet.column.ParquetProperties;
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
++import parquet.column.impl.ColumnWriteStoreV2;
+ import parquet.hadoop.CodecFactory.BytesCompressor;
+ import parquet.hadoop.api.WriteSupport;
+ import parquet.io.ColumnIOFactory;
+@@ -47,17 +50,16 @@ class InternalParquetRecordWriter<T> {
+   private final int rowGroupSize;
+   private final int pageSize;
+   private final BytesCompressor compressor;
+-  private final int dictionaryPageSize;
+-  private final boolean enableDictionary;
+   private final boolean validating;
+-  private final WriterVersion writerVersion;
++  private final ParquetProperties parquetProperties;
+ 
+   private long recordCount = 0;
+   private long recordCountForNextMemCheck = MINIMUM_RECORD_COUNT_FOR_CHECK;
+ 
+-  private ColumnWriteStoreImpl columnStore;
++  private ColumnWriteStore columnStore;
+   private ColumnChunkPageWriteStore pageStore;
+ 
++
+   /**
+    * @param parquetFileWriter the file to write to
+    * @param writeSupport the class to convert incoming records
+@@ -85,10 +87,8 @@ class InternalParquetRecordWriter<T> {
+     this.rowGroupSize = rowGroupSize;
+     this.pageSize = pageSize;
+     this.compressor = compressor;
+-    this.dictionaryPageSize = dictionaryPageSize;
+-    this.enableDictionary = enableDictionary;
+     this.validating = validating;
+-    this.writerVersion = writerVersion;
++    this.parquetProperties = new ParquetProperties(dictionaryPageSize, writerVersion, enableDictionary);
+     initStore();
+   }
+ 
+@@ -101,7 +101,11 @@ class InternalParquetRecordWriter<T> {
+     // we don't want this number to be too small either
+     // ideally, slightly bigger than the page size, but not bigger than the block buffer
+     int initialPageBufferSize = max(MINIMUM_BUFFER_SIZE, min(pageSize + pageSize / 10, initialBlockBufferSize));
+-    columnStore = new ColumnWriteStoreImpl(pageStore, pageSize, initialPageBufferSize, dictionaryPageSize, enableDictionary, writerVersion);
++    columnStore = parquetProperties.newColumnWriteStore(
++        schema,
++        pageStore,
++        pageSize,
++        initialPageBufferSize);
+     MessageColumnIO columnIO = new ColumnIOFactory(validating).getColumnIO(schema);
+     writeSupport.prepareForWrite(columnIO.getRecordWriter(columnStore));
+   }
+@@ -119,7 +123,7 @@ class InternalParquetRecordWriter<T> {
+ 
+   private void checkBlockSizeReached() throws IOException {
+     if (recordCount >= recordCountForNextMemCheck) { // checking the memory size is relatively expensive, so let's not do it for every record.
+-      long memSize = columnStore.memSize();
++      long memSize = columnStore.getBufferedSize();
+       if (memSize > rowGroupSize) {
+         LOG.info(format("mem size %,d > %,d: flushing %,d records to disk.", memSize, rowGroupSize, recordCount));
+         flushRowGroupToStore();
+@@ -138,8 +142,8 @@ class InternalParquetRecordWriter<T> {
+ 
+   private void flushRowGroupToStore()
+       throws IOException {
+-    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.allocatedSize()));
+-    if (columnStore.allocatedSize() > 3 * (long)rowGroupSize) {
++    LOG.info(format("Flushing mem columnStore to file. allocated memory: %,d", columnStore.getAllocatedSize()));
++    if (columnStore.getAllocatedSize() > 3 * (long)rowGroupSize) {
+       LOG.warn("Too much memory used: " + columnStore.memUsageString());
+     }
+ 
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
+index 74d65fe..47308c5 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
+@@ -19,7 +19,10 @@ import static parquet.Log.DEBUG;
+ import static parquet.bytes.BytesUtils.readIntLittleEndian;
+ import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
+ import static parquet.format.converter.ParquetMetadataConverter.SKIP_ROW_GROUPS;
+-import static parquet.hadoop.ParquetFileWriter.*;
++import static parquet.format.converter.ParquetMetadataConverter.fromParquetStatistics;
++import static parquet.hadoop.ParquetFileWriter.MAGIC;
++import static parquet.hadoop.ParquetFileWriter.PARQUET_COMMON_METADATA_FILE;
++import static parquet.hadoop.ParquetFileWriter.PARQUET_METADATA_FILE;
+ 
+ import java.io.ByteArrayInputStream;
+ import java.io.Closeable;
+@@ -29,7 +32,6 @@ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+ import java.util.Collections;
+-import java.util.Date;
+ import java.util.HashMap;
+ import java.util.HashSet;
+ import java.util.List;
+@@ -48,15 +50,19 @@ import org.apache.hadoop.fs.FileStatus;
+ import org.apache.hadoop.fs.FileSystem;
+ import org.apache.hadoop.fs.Path;
+ import org.apache.hadoop.fs.PathFilter;
+-import org.apache.hadoop.mapred.Utils;
+ 
+ import parquet.Log;
+ import parquet.bytes.BytesInput;
+ import parquet.column.ColumnDescriptor;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
+ import parquet.column.page.PageReadStore;
+ import parquet.common.schema.ColumnPath;
++import parquet.format.DataPageHeader;
++import parquet.format.DataPageHeaderV2;
++import parquet.format.DictionaryPageHeader;
+ import parquet.format.PageHeader;
+ import parquet.format.Util;
+ import parquet.format.converter.ParquetMetadataConverter;
+@@ -81,7 +87,7 @@ public class ParquetFileReader implements Closeable {
+ 
+   public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
+ 
+-  private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
++  private static ParquetMetadataConverter converter = new ParquetMetadataConverter();
+ 
+   /**
+    * for files provided, check if there's a summary file.
+@@ -423,7 +429,7 @@ public class ParquetFileReader implements Closeable {
+         throw new RuntimeException("corrupted file: the footer index is not within the file");
+       }
+       f.seek(footerIndex);
+-      return parquetMetadataConverter.readParquetMetadata(f, filter);
++      return converter.readParquetMetadata(f, filter);
+     } finally {
+       f.close();
+     }
+@@ -535,41 +541,63 @@ public class ParquetFileReader implements Closeable {
+      * @return the list of pages
+      */
+     public ColumnChunkPageReader readAllPages() throws IOException {
+-      List<Page> pagesInChunk = new ArrayList<Page>();
++      List<DataPage> pagesInChunk = new ArrayList<DataPage>();
+       DictionaryPage dictionaryPage = null;
+       long valuesCountReadSoFar = 0;
+       while (valuesCountReadSoFar < descriptor.metadata.getValueCount()) {
+         PageHeader pageHeader = readPageHeader();
++        int uncompressedPageSize = pageHeader.getUncompressed_page_size();
++        int compressedPageSize = pageHeader.getCompressed_page_size();
+         switch (pageHeader.type) {
+           case DICTIONARY_PAGE:
+             // there is only one dictionary page per column chunk
+             if (dictionaryPage != null) {
+               throw new ParquetDecodingException("more than one dictionary page in column " + descriptor.col);
+             }
+-            dictionaryPage =
++          DictionaryPageHeader dicHeader = pageHeader.getDictionary_page_header();
++          dictionaryPage =
+                 new DictionaryPage(
+-                    this.readAsBytesInput(pageHeader.compressed_page_size),
+-                    pageHeader.uncompressed_page_size,
+-                    pageHeader.dictionary_page_header.num_values,
+-                    parquetMetadataConverter.getEncoding(pageHeader.dictionary_page_header.encoding)
++                    this.readAsBytesInput(compressedPageSize),
++                    uncompressedPageSize,
++                    dicHeader.getNum_values(),
++                    converter.getEncoding(dicHeader.getEncoding())
+                     );
+             break;
+           case DATA_PAGE:
++            DataPageHeader dataHeaderV1 = pageHeader.getData_page_header();
+             pagesInChunk.add(
+-                new Page(
+-                    this.readAsBytesInput(pageHeader.compressed_page_size),
+-                    pageHeader.data_page_header.num_values,
+-                    pageHeader.uncompressed_page_size,
+-                    ParquetMetadataConverter.fromParquetStatistics(pageHeader.data_page_header.statistics, descriptor.col.getType()),
+-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.repetition_level_encoding),
+-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.definition_level_encoding),
+-                    parquetMetadataConverter.getEncoding(pageHeader.data_page_header.encoding)
++                new DataPageV1(
++                    this.readAsBytesInput(compressedPageSize),
++                    dataHeaderV1.getNum_values(),
++                    uncompressedPageSize,
++                    fromParquetStatistics(dataHeaderV1.getStatistics(), descriptor.col.getType()),
++                    converter.getEncoding(dataHeaderV1.getRepetition_level_encoding()),
++                    converter.getEncoding(dataHeaderV1.getDefinition_level_encoding()),
++                    converter.getEncoding(dataHeaderV1.getEncoding())
+                     ));
+-            valuesCountReadSoFar += pageHeader.data_page_header.num_values;
++            valuesCountReadSoFar += dataHeaderV1.getNum_values();
++            break;
++          case DATA_PAGE_V2:
++            DataPageHeaderV2 dataHeaderV2 = pageHeader.getData_page_header_v2();
++            int dataSize = compressedPageSize - dataHeaderV2.getRepetition_levels_byte_length() - dataHeaderV2.getDefinition_levels_byte_length();
++            pagesInChunk.add(
++                new DataPageV2(
++                    dataHeaderV2.getNum_rows(),
++                    dataHeaderV2.getNum_nulls(),
++                    dataHeaderV2.getNum_values(),
++                    this.readAsBytesInput(dataHeaderV2.getRepetition_levels_byte_length()),
++                    this.readAsBytesInput(dataHeaderV2.getDefinition_levels_byte_length()),
++                    converter.getEncoding(dataHeaderV2.getEncoding()),
++                    this.readAsBytesInput(dataSize),
++                    uncompressedPageSize,
++                    fromParquetStatistics(dataHeaderV2.getStatistics(), descriptor.col.getType()),
++                    dataHeaderV2.isIs_compressed()
++                    ));
++            valuesCountReadSoFar += dataHeaderV2.getNum_values();
+             break;
+           default:
+-            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.type + " of size " + pageHeader.compressed_page_size);
+-            this.skip(pageHeader.compressed_page_size);
++            if (DEBUG) LOG.debug("skipping page of type " + pageHeader.getType() + " of size " + compressedPageSize);
++            this.skip(compressedPageSize);
+             break;
+         }
+       }
+diff --git a/parquet-hadoop/src/test/java/parquet/hadoop/TestColumnChunkPageWriteStore.java b/parquet-hadoop/src/test/java/parquet/hadoop/TestColumnChunkPageWriteStore.java
+new file mode 100644
+index 0000000..f499d1a
+--- /dev/null
++++ b/parquet-hadoop/src/test/java/parquet/hadoop/TestColumnChunkPageWriteStore.java
+@@ -0,0 +1,107 @@
++package parquet.hadoop;
++
++import static org.junit.Assert.assertEquals;
++import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
++import static parquet.hadoop.metadata.CompressionCodecName.GZIP;
++
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.util.HashMap;
++
++import org.apache.hadoop.conf.Configuration;
++import org.apache.hadoop.fs.FileSystem;
++import org.apache.hadoop.fs.Path;
++import org.junit.Test;
++
++import parquet.bytes.BytesInput;
++import parquet.bytes.LittleEndianDataInputStream;
++import parquet.column.ColumnDescriptor;
++import parquet.column.Encoding;
++import parquet.column.page.DataPageV2;
++import parquet.column.page.PageReadStore;
++import parquet.column.page.PageReader;
++import parquet.column.page.PageWriter;
++import parquet.column.statistics.BinaryStatistics;
++import parquet.column.statistics.Statistics;
++import parquet.hadoop.metadata.CompressionCodecName;
++import parquet.hadoop.metadata.ParquetMetadata;
++import parquet.schema.MessageType;
++import parquet.schema.MessageTypeParser;
++
++public class TestColumnChunkPageWriteStore {
++
++  @Test
++  public void test() throws Exception {
++    Configuration conf = new Configuration();
++    Path file = new Path("target/test/TestColumnChunkPageWriteStore/test.parquet");
++    Path root = file.getParent();
++    FileSystem fs = file.getFileSystem(conf);
++    if (fs.exists(root)) {
++      fs.delete(root, true);
++    }
++    fs.mkdirs(root);
++    CodecFactory f = new CodecFactory(conf);
++    int pageSize = 1024;
++    int initialSize = 1024;
++    MessageType schema = MessageTypeParser.parseMessageType("message test { repeated binary bar; }");
++    ColumnDescriptor col = schema.getColumns().get(0);
++    Encoding dataEncoding = Encoding.PLAIN;
++    int valueCount = 10;
++    int d = 1;
++    int r = 2;
++    int v = 3;
++    BytesInput definitionLevels = BytesInput.fromInt(d);
++    BytesInput repetitionLevels = BytesInput.fromInt(r);
++    Statistics<?> statistics = new BinaryStatistics();
++    BytesInput data = BytesInput.fromInt(v);
++    int rowCount = 5;
++    int nullCount = 1;
++    CompressionCodecName codec = GZIP;
++
++    {
++      ParquetFileWriter writer = new ParquetFileWriter(conf, schema, file);
++      writer.start();
++      writer.startBlock(rowCount);
++      {
++        ColumnChunkPageWriteStore store = new ColumnChunkPageWriteStore(f.getCompressor(codec, pageSize ), schema , initialSize);
++        PageWriter pageWriter = store.getPageWriter(col);
++        pageWriter.writePageV2(
++            rowCount, nullCount, valueCount,
++            repetitionLevels, definitionLevels,
++            dataEncoding, data,
++            statistics);
++        store.flushToFileWriter(writer);
++      }
++      writer.endBlock();
++      writer.end(new HashMap<String, String>());
++    }
++
++    {
++      ParquetMetadata footer = ParquetFileReader.readFooter(conf, file, NO_FILTER);
++      ParquetFileReader reader = new ParquetFileReader(conf, file, footer.getBlocks(), schema.getColumns());
++      PageReadStore rowGroup = reader.readNextRowGroup();
++      PageReader pageReader = rowGroup.getPageReader(col);
++      DataPageV2 page = (DataPageV2)pageReader.readPage();
++      assertEquals(rowCount, page.getRowCount());
++      assertEquals(nullCount, page.getNullCount());
++      assertEquals(valueCount, page.getValueCount());
++      assertEquals(d, intValue(page.getDefinitionLevels()));
++      assertEquals(r, intValue(page.getRepetitionLevels()));
++      assertEquals(dataEncoding, page.getDataEncoding());
++      assertEquals(v, intValue(page.getData()));
++      assertEquals(statistics.toString(), page.getStatistics().toString());
++      reader.close();
++    }
++  }
++
++  private int intValue(BytesInput in) throws IOException {
++    ByteArrayOutputStream baos = new ByteArrayOutputStream();
++    in.writeAllTo(baos);
++    LittleEndianDataInputStream os = new LittleEndianDataInputStream(new ByteArrayInputStream(baos.toByteArray()));
++    int i = os.readInt();
++    os.close();
++    return i;
++  }
++
++}
+diff --git a/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetFileWriter.java b/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetFileWriter.java
+index c86753e..1d45469 100644
+--- a/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetFileWriter.java
++++ b/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetFileWriter.java
+@@ -42,7 +42,8 @@ import parquet.Log;
+ import parquet.bytes.BytesInput;
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.Encoding;
+-import parquet.column.page.Page;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPageV1;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.PageReader;
+ import parquet.column.statistics.BinaryStatistics;
+@@ -369,9 +370,9 @@ public class TestParquetFileWriter {
+ 
+   private void validateContains(MessageType schema, PageReadStore pages, String[] path, int values, BytesInput bytes) throws IOException {
+     PageReader pageReader = pages.getPageReader(schema.getColumnDescription(path));
+-    Page page = pageReader.readPage();
++    DataPage page = pageReader.readPage();
+     assertEquals(values, page.getValueCount());
+-    assertArrayEquals(bytes.toByteArray(), page.getBytes().toByteArray());
++    assertArrayEquals(bytes.toByteArray(), ((DataPageV1)page).getBytes().toByteArray());
+   }
+ 
+   @Test
+diff --git a/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetWriterNewPage.java b/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetWriterNewPage.java
+new file mode 100644
+index 0000000..23a1f13
+--- /dev/null
++++ b/parquet-hadoop/src/test/java/parquet/hadoop/TestParquetWriterNewPage.java
+@@ -0,0 +1,117 @@
++package parquet.hadoop;
++
++import static java.util.Arrays.asList;
++import static org.junit.Assert.assertEquals;
++import static org.junit.Assert.assertTrue;
++import static parquet.column.Encoding.DELTA_BYTE_ARRAY;
++import static parquet.column.Encoding.PLAIN;
++import static parquet.column.Encoding.PLAIN_DICTIONARY;
++import static parquet.column.Encoding.RLE_DICTIONARY;
++import static parquet.column.ParquetProperties.WriterVersion.PARQUET_1_0;
++import static parquet.column.ParquetProperties.WriterVersion.PARQUET_2_0;
++import static parquet.format.converter.ParquetMetadataConverter.NO_FILTER;
++import static parquet.hadoop.ParquetFileReader.readFooter;
++import static parquet.hadoop.metadata.CompressionCodecName.UNCOMPRESSED;
++import static parquet.schema.MessageTypeParser.parseMessageType;
++
++import java.util.HashMap;
++import java.util.Map;
++
++import org.apache.hadoop.conf.Configuration;
++import org.apache.hadoop.fs.FileSystem;
++import org.apache.hadoop.fs.Path;
++import org.junit.Test;
++
++import parquet.column.Encoding;
++import parquet.column.ParquetProperties.WriterVersion;
++import parquet.example.data.Group;
++import parquet.example.data.simple.SimpleGroupFactory;
++import parquet.hadoop.example.GroupReadSupport;
++import parquet.hadoop.example.GroupWriteSupport;
++import parquet.hadoop.metadata.BlockMetaData;
++import parquet.hadoop.metadata.ColumnChunkMetaData;
++import parquet.hadoop.metadata.ParquetMetadata;
++import parquet.io.api.Binary;
++import parquet.schema.MessageType;
++
++public class TestParquetWriterNewPage {
++
++  @Test
++  public void test() throws Exception {
++    Configuration conf = new Configuration();
++    Path root = new Path("target/tests/TestParquetWriter/");
++    FileSystem fs = root.getFileSystem(conf);
++    if (fs.exists(root)) {
++      fs.delete(root, true);
++    }
++    fs.mkdirs(root);
++    MessageType schema = parseMessageType(
++        "message test { "
++        + "required binary binary_field; "
++        + "required int32 int32_field; "
++        + "required int64 int64_field; "
++        + "required boolean boolean_field; "
++        + "required float float_field; "
++        + "required double double_field; "
++        + "required fixed_len_byte_array(3) flba_field; "
++        + "required int96 int96_field; "
++        + "optional binary null_field; "
++        + "} ");
++    GroupWriteSupport.setSchema(schema, conf);
++    SimpleGroupFactory f = new SimpleGroupFactory(schema);
++    Map<String, Encoding> expected = new HashMap<String, Encoding>();
++    expected.put("10-" + PARQUET_1_0, PLAIN_DICTIONARY);
++    expected.put("1000-" + PARQUET_1_0, PLAIN);
++    expected.put("10-" + PARQUET_2_0, RLE_DICTIONARY);
++    expected.put("1000-" + PARQUET_2_0, DELTA_BYTE_ARRAY);
++    for (int modulo : asList(10, 1000)) {
++      for (WriterVersion version : WriterVersion.values()) {
++        Path file = new Path(root, version.name() + "_" + modulo);
++        ParquetWriter<Group> writer = new ParquetWriter<Group>(
++            file,
++            new GroupWriteSupport(),
++            UNCOMPRESSED, 1024, 1024, 512, true, false, version, conf);
++        for (int i = 0; i < 1000; i++) {
++          writer.write(
++              f.newGroup()
++              .append("binary_field", "test" + (i % modulo))
++              .append("int32_field", 32)
++              .append("int64_field", 64l)
++              .append("boolean_field", true)
++              .append("float_field", 1.0f)
++              .append("double_field", 2.0d)
++              .append("flba_field", "foo")
++              .append("int96_field", Binary.fromByteArray(new byte[12])));
++        }
++        writer.close();
++
++        ParquetReader<Group> reader = ParquetReader.builder(new GroupReadSupport(), file).withConf(conf).build();
++        for (int i = 0; i < 1000; i++) {
++          Group group = reader.read();
++          assertEquals("test" + (i % modulo), group.getBinary("binary_field", 0).toStringUsingUTF8());
++          assertEquals(32, group.getInteger("int32_field", 0));
++          assertEquals(64l, group.getLong("int64_field", 0));
++          assertEquals(true, group.getBoolean("boolean_field", 0));
++          assertEquals(1.0f, group.getFloat("float_field", 0), 0.001);
++          assertEquals(2.0d, group.getDouble("double_field", 0), 0.001);
++          assertEquals("foo", group.getBinary("flba_field", 0).toStringUsingUTF8());
++          assertEquals(Binary.fromByteArray(new byte[12]), group.getInt96("int96_field", 0));
++          assertEquals(0, group.getFieldRepetitionCount("null_field"));
++        }
++        reader.close();
++        ParquetMetadata footer = readFooter(conf, file, NO_FILTER);
++        for (BlockMetaData blockMetaData : footer.getBlocks()) {
++          for (ColumnChunkMetaData column : blockMetaData.getColumns()) {
++            if (column.getPath().toDotString().equals("binary_field")) {
++              String key = modulo + "-" + version;
++              Encoding expectedEncoding = expected.get(key);
++              assertTrue(
++                  key + ":" + column.getEncodings() + " should contain " + expectedEncoding,
++                  column.getEncodings().contains(expectedEncoding));
++            }
++          }
++        }
++      }
++    }
++  }
++}
+diff --git a/parquet-pig/src/test/java/parquet/pig/GenerateIntTestFile.java b/parquet-pig/src/test/java/parquet/pig/GenerateIntTestFile.java
+deleted file mode 100644
+index 24d634e..0000000
+--- a/parquet-pig/src/test/java/parquet/pig/GenerateIntTestFile.java
++++ /dev/null
+@@ -1,142 +0,0 @@
+-/**
+- * Copyright 2012 Twitter, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package parquet.pig;
+-
+-import java.io.File;
+-import java.io.IOException;
+-import java.util.HashMap;
+-import java.util.List;
+-
+-import org.apache.hadoop.conf.Configuration;
+-import org.apache.hadoop.fs.Path;
+-
+-import parquet.Log;
+-import parquet.bytes.BytesInput;
+-import parquet.column.ColumnDescriptor;
+-import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
+-import parquet.column.page.Page;
+-import parquet.column.page.PageReadStore;
+-import parquet.column.page.PageReader;
+-import parquet.column.page.mem.MemPageStore;
+-import parquet.hadoop.ParquetFileReader;
+-import parquet.hadoop.ParquetFileWriter;
+-import parquet.hadoop.metadata.CompressionCodecName;
+-import parquet.hadoop.metadata.ParquetMetadata;
+-import parquet.io.ColumnIOFactory;
+-import parquet.io.MessageColumnIO;
+-import parquet.io.api.RecordConsumer;
+-import parquet.schema.MessageType;
+-import parquet.schema.PrimitiveType;
+-import parquet.schema.PrimitiveType.PrimitiveTypeName;
+-import parquet.schema.Type.Repetition;
+-
+-public class GenerateIntTestFile {
+-  private static final Log LOG = Log.getLog(GenerateIntTestFile.class);
+-
+-  public static void main(String[] args) throws Throwable {
+-    File out = new File("testdata/from_java/int_test_file");
+-    if (out.exists()) {
+-      if (!out.delete()) {
+-        throw new RuntimeException("can not remove existing file " + out.getAbsolutePath());
+-      }
+-    }
+-    Path testFile = new Path(out.toURI());
+-    Configuration configuration = new Configuration();
+-    {
+-      MessageType schema = new MessageType("int_test_file", new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32, "int_col"));
+-
+-      MemPageStore pageStore = new MemPageStore(100);
+-      ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 8*1024, 8*1024, 8*1024, false, WriterVersion.PARQUET_1_0);
+-      MessageColumnIO columnIO = new ColumnIOFactory().getColumnIO(schema);
+-
+-      RecordConsumer recordWriter = columnIO.getRecordWriter(store);
+-
+-      int recordCount = 0;
+-      for (int i = 0; i < 100; i++) {
+-        recordWriter.startMessage();
+-        recordWriter.startField("int_col", 0);
+-        if (i % 10 != 0) {
+-          recordWriter.addInteger(i);
+-        }
+-        recordWriter.endField("int_col", 0);
+-        recordWriter.endMessage();
+-        ++ recordCount;
+-      }
+-      store.flush();
+-
+-
+-      writeToFile(testFile, configuration, schema, pageStore, recordCount);
+-    }
+-
+-    {
+-      readTestFile(testFile, configuration);
+-    }
+-  }
+-
+-  public static void readTestFile(Path testFile, Configuration configuration)
+-      throws IOException {
+-    ParquetMetadata readFooter = ParquetFileReader.readFooter(configuration, testFile);
+-    MessageType schema = readFooter.getFileMetaData().getSchema();
+-    ParquetFileReader parquetFileReader = new ParquetFileReader(configuration, testFile, readFooter.getBlocks(), schema.getColumns());
+-    PageReadStore pages = parquetFileReader.readNextRowGroup();
+-    System.out.println(pages.getRowCount());
+-  }
+-
+-  public static void writeToFile(Path file, Configuration configuration, MessageType schema, MemPageStore pageStore, int recordCount)
+-      throws IOException {
+-    ParquetFileWriter w = startFile(file, configuration, schema);
+-    writeBlock(schema, pageStore, recordCount, w);
+-    endFile(w);
+-  }
+-
+-  public static void endFile(ParquetFileWriter w) throws IOException {
+-    w.end(new HashMap<String, String>());
+-  }
+-
+-  public static void writeBlock(MessageType schema, MemPageStore pageStore,
+-      int recordCount, ParquetFileWriter w) throws IOException {
+-    w.startBlock(recordCount);
+-    List<ColumnDescriptor> columns = schema.getColumns();
+-    for (ColumnDescriptor columnDescriptor : columns) {
+-      PageReader pageReader = pageStore.getPageReader(columnDescriptor);
+-      long totalValueCount = pageReader.getTotalValueCount();
+-      w.startColumn(columnDescriptor, totalValueCount, CompressionCodecName.UNCOMPRESSED);
+-      int n = 0;
+-      do {
+-        Page page = pageReader.readPage();
+-        n += page.getValueCount();
+-        // TODO: change INTFC
+-        w.writeDataPage(
+-            page.getValueCount(),
+-            (int)page.getBytes().size(),
+-            BytesInput.from(page.getBytes().toByteArray()),
+-            page.getRlEncoding(),
+-            page.getDlEncoding(),
+-            page.getValueEncoding());
+-      } while (n < totalValueCount);
+-      w.endColumn();
+-    }
+-    w.endBlock();
+-  }
+-
+-  public static ParquetFileWriter startFile(Path file,
+-      Configuration configuration, MessageType schema) throws IOException {
+-    ParquetFileWriter w = new ParquetFileWriter(configuration, schema, file);
+-    w.start();
+-    return w;
+-  }
+-}
+diff --git a/parquet-pig/src/test/java/parquet/pig/GenerateTPCH.java b/parquet-pig/src/test/java/parquet/pig/GenerateTPCH.java
+deleted file mode 100644
+index 106dc30..0000000
+--- a/parquet-pig/src/test/java/parquet/pig/GenerateTPCH.java
++++ /dev/null
+@@ -1,112 +0,0 @@
+-/**
+- * Copyright 2012 Twitter, Inc.
+- *
+- * Licensed under the Apache License, Version 2.0 (the "License");
+- * you may not use this file except in compliance with the License.
+- * You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing, software
+- * distributed under the License is distributed on an "AS IS" BASIS,
+- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+- * See the License for the specific language governing permissions and
+- * limitations under the License.
+- */
+-package parquet.pig;
+-
+-import static parquet.pig.GenerateIntTestFile.readTestFile;
+-import static parquet.pig.GenerateIntTestFile.writeToFile;
+-
+-import java.io.File;
+-import java.io.IOException;
+-
+-
+-import org.apache.hadoop.conf.Configuration;
+-import org.apache.hadoop.fs.Path;
+-
+-import parquet.Log;
+-import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
+-import parquet.column.page.mem.MemPageStore;
+-import parquet.io.ColumnIOFactory;
+-import parquet.io.MessageColumnIO;
+-import parquet.io.api.Binary;
+-import parquet.io.api.RecordConsumer;
+-import parquet.schema.MessageType;
+-import parquet.schema.PrimitiveType;
+-import parquet.schema.PrimitiveType.PrimitiveTypeName;
+-import parquet.schema.Type.Repetition;
+-
+-public class GenerateTPCH {
+-  private static final Log LOG = Log.getLog(GenerateTPCH.class);
+-
+-  public static void main(String[] args) throws IOException {
+-    File out = new File("testdata/from_java/tpch/customer");
+-    if (out.exists()) {
+-      if (!out.delete()) {
+-        throw new RuntimeException("can not remove existing file " + out.getAbsolutePath());
+-      }
+-    }
+-    Path testFile = new Path(out.toURI());
+-    Configuration configuration = new Configuration();
+-    MessageType schema = new MessageType("customer",
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32,  "c_custkey"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_name"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_address"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.INT32,  "c_nationkey"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_phone"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.DOUBLE, "c_acctbal"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_mktsegment"),
+-        new PrimitiveType(Repetition.OPTIONAL, PrimitiveTypeName.BINARY, "c_comment")
+-        );
+-
+-    MemPageStore pageStore = new MemPageStore(150000);
+-    ColumnWriteStoreImpl store = new ColumnWriteStoreImpl(pageStore, 20*1024, 1*1024, 20*1024, false, WriterVersion.PARQUET_1_0);
+-    MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+-
+-    RecordConsumer recordWriter = columnIO.getRecordWriter(store);
+-
+-    int recordCount = 0;
+-    for (int i = 0; i < 150000; i++) {
+-      recordWriter.startMessage();
+-      writeField(recordWriter, 0, "c_custkey", i % 10 == 0 ? null : i);
+-      writeField(recordWriter, 1, "c_name", i % 11 == 0 ? null : "name_" + i);
+-      writeField(recordWriter, 2, "c_address", i % 12 == 0 ? null : "add_" + i);
+-      writeField(recordWriter, 3, "c_nationkey", i % 13 == 0 ? null : i);
+-      writeField(recordWriter, 4, "c_phone", i % 14 == 0 ? null : "phone_" + i);
+-      writeField(recordWriter, 5, "c_acctbal", i % 15 == 0 ? null : 1.2d * i);
+-      writeField(recordWriter, 6, "c_mktsegment", i % 16 == 0 ? null : "mktsegment_" + i);
+-      writeField(recordWriter, 7, "c_comment", i % 17 == 0 ? null : "comment_" + i);
+-      recordWriter.endMessage();
+-      ++ recordCount;
+-    }
+-    store.flush();
+-    System.out.printf("mem size %,d, maxColSize %,d, allocated %,d\n", store.memSize(), store.maxColMemSize(), store.allocatedSize());
+-    System.out.println(store.memUsageString());
+-    writeToFile(testFile, configuration, schema, pageStore, recordCount);
+-
+-    try {
+-      readTestFile(testFile, configuration);
+-    } catch (Exception e) {
+-      LOG.error("failed reading", e);
+-    }
+-
+-  }
+-
+-  private static void writeField(RecordConsumer recordWriter, int index, String name, Object value) {
+-    if (value != null) {
+-      recordWriter.startField(name, index);
+-      if (value instanceof Integer) {
+-        recordWriter.addInteger((Integer)value);
+-      } else if (value instanceof String) {
+-        recordWriter.addBinary(Binary.fromString((String)value));
+-      } else if (value instanceof Double) {
+-        recordWriter.addDouble((Double)value);
+-      } else {
+-        throw new IllegalArgumentException(value.getClass().getName() + " not supported");
+-      }
+-      recordWriter.endField(name, index);
+-    }
+-  }
+-}
+diff --git a/parquet-pig/src/test/java/parquet/pig/TupleConsumerPerfTest.java b/parquet-pig/src/test/java/parquet/pig/TupleConsumerPerfTest.java
+index 66a51ae..68ad1fe 100644
+--- a/parquet-pig/src/test/java/parquet/pig/TupleConsumerPerfTest.java
++++ b/parquet-pig/src/test/java/parquet/pig/TupleConsumerPerfTest.java
+@@ -29,7 +29,7 @@ import org.apache.pig.parser.ParserException;
+ 
+ import parquet.Log;
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.hadoop.api.ReadSupport.ReadContext;
+@@ -56,11 +56,11 @@ public class TupleConsumerPerfTest {
+     MessageType schema = new PigSchemaConverter().convert(Utils.getSchemaFromString(pigSchema));
+ 
+     MemPageStore memPageStore = new MemPageStore(0);
+-    ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
++    ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 50*1024*1024, 50*1024*1024, 50*1024*1024, false, WriterVersion.PARQUET_1_0);
+     write(memPageStore, columns, schema, pigSchema);
+     columns.flush();
+     read(memPageStore, pigSchema, pigSchemaProjected, pigSchemaNoString);
+-    System.out.println(columns.memSize()+" bytes used total");
++    System.out.println(columns.getBufferedSize()+" bytes used total");
+     System.out.println("max col size: "+columns.maxColMemSize()+" bytes");
+   }
+ 
+@@ -153,7 +153,7 @@ public class TupleConsumerPerfTest {
+     return map;
+   }
+ 
+-  private static void write(MemPageStore memPageStore, ColumnWriteStoreImpl columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
++  private static void write(MemPageStore memPageStore, ColumnWriteStoreV1 columns, MessageType schema, String pigSchemaString) throws ExecException, ParserException {
+     MessageColumnIO columnIO = newColumnFactory(pigSchemaString);
+     TupleWriteSupport tupleWriter = TupleWriteSupport.fromPigSchema(pigSchemaString);
+     tupleWriter.init(null);
+diff --git a/parquet-thrift/src/test/java/parquet/thrift/TestParquetReadProtocol.java b/parquet-thrift/src/test/java/parquet/thrift/TestParquetReadProtocol.java
+index f14b7da..eb20412 100644
+--- a/parquet-thrift/src/test/java/parquet/thrift/TestParquetReadProtocol.java
++++ b/parquet-thrift/src/test/java/parquet/thrift/TestParquetReadProtocol.java
+@@ -36,7 +36,7 @@ import org.junit.Test;
+ 
+ import parquet.Log;
+ import parquet.column.ParquetProperties.WriterVersion;
+-import parquet.column.impl.ColumnWriteStoreImpl;
++import parquet.column.impl.ColumnWriteStoreV1;
+ import parquet.column.page.mem.MemPageStore;
+ import parquet.io.ColumnIOFactory;
+ import parquet.io.MessageColumnIO;
+@@ -145,7 +145,7 @@ public class TestParquetReadProtocol {
+     final MessageType schema = schemaConverter.convert(thriftClass);
+     LOG.info(schema);
+     final MessageColumnIO columnIO = new ColumnIOFactory(true).getColumnIO(schema);
+-    final ColumnWriteStoreImpl columns = new ColumnWriteStoreImpl(memPageStore, 10000, 10000, 10000, false, WriterVersion.PARQUET_1_0);
++    final ColumnWriteStoreV1 columns = new ColumnWriteStoreV1(memPageStore, 10000, 10000, 10000, false, WriterVersion.PARQUET_1_0);
+     final RecordConsumer recordWriter = columnIO.getRecordWriter(columns);
+     final StructType thriftType = schemaConverter.toStructType(thriftClass);
+     ParquetWriteProtocol parquetWriteProtocol = new ParquetWriteProtocol(recordWriter, columnIO, thriftType);
+diff --git a/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java b/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
+index 387c6bb..eb32057 100644
+--- a/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
++++ b/parquet-tools/src/main/java/parquet/tools/command/DumpCommand.java
+@@ -20,7 +20,6 @@ import java.math.BigInteger;
+ import java.nio.CharBuffer;
+ import java.nio.charset.Charset;
+ import java.nio.charset.CharsetDecoder;
+-
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collections;
+@@ -35,13 +34,14 @@ import org.apache.commons.cli.Options;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.Path;
+ 
+-import com.google.common.base.Joiner;
+-
+ import parquet.column.ColumnDescriptor;
+ import parquet.column.ColumnReader;
+ import parquet.column.impl.ColumnReadStoreImpl;
++import parquet.column.page.DataPage;
++import parquet.column.page.DataPage.Visitor;
++import parquet.column.page.DataPageV1;
++import parquet.column.page.DataPageV2;
+ import parquet.column.page.DictionaryPage;
+-import parquet.column.page.Page;
+ import parquet.column.page.PageReadStore;
+ import parquet.column.page.PageReader;
+ import parquet.hadoop.ParquetFileReader;
+@@ -57,6 +57,8 @@ import parquet.tools.util.MetadataUtils;
+ import parquet.tools.util.PrettyPrintWriter;
+ import parquet.tools.util.PrettyPrintWriter.WhiteSpaceHandler;
+ 
++import com.google.common.base.Joiner;
++
+ public class DumpCommand extends ArgsOnlyCommand {
+     private static final Charset UTF8 = Charset.forName("UTF-8");
+     private static final CharsetDecoder UTF8_DECODER = UTF8.newDecoder();
+@@ -227,7 +229,7 @@ public class DumpCommand extends ArgsOnlyCommand {
+         }
+     }
+ 
+-    public static void dump(PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
++    public static void dump(final PrettyPrintWriter out, PageReadStore store, ColumnDescriptor column) throws IOException {
+         PageReader reader = store.getPageReader(column);
+ 
+         long vc = reader.getTotalValueCount();
+@@ -244,12 +246,26 @@ public class DumpCommand extends ArgsOnlyCommand {
+         out.println();
+         out.rule('-');
+ 
+-        Page page = reader.readPage();
++        DataPage page = reader.readPage();
+         for (long count = 0; page != null; count++) {
+             out.format("page %d:", count);
+-            out.format(" DLE:%s", page.getDlEncoding());
+-            out.format(" RLE:%s", page.getRlEncoding());
+-            out.format(" VLE:%s", page.getValueEncoding());
++            page.accept(new Visitor<Void>() {
++              @Override
++              public Void visit(DataPageV1 pageV1) {
++                out.format(" DLE:%s", pageV1.getDlEncoding());
++                out.format(" RLE:%s", pageV1.getRlEncoding());
++                out.format(" VLE:%s", pageV1.getValueEncoding());
++                return null;
++              }
++
++              @Override
++              public Void visit(DataPageV2 pageV2) {
++                out.format(" DLE:RLE");
++                out.format(" RLE:RLE");
++                out.format(" VLE:%s", pageV2.getDataEncoding());
++                return null;
++              }
++            });
+             out.format(" SZ:%d", page.getUncompressedSize());
+             out.format(" VC:%d", page.getValueCount());
+             out.println();
+diff --git a/pom.xml b/pom.xml
+index b79f241..564b71a 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -249,6 +249,7 @@
+                      <! one time exclusions that should be removed >
+                      <exclude>parquet/io/api/Binary</exclude>
+                      <exclude>parquet/column/values/**</exclude>
++                     <exclude>parquet/column/**</exclude>
+                      <exclude>parquet/hadoop/ParquetInputSplit</exclude>
+                    </excludes>
+                  </requireBackwardCompatibility>
+-- 
+1.7.0.4
+

@@ -1,0 +1,89 @@
+commit 7235ba528c1d643624ce6ecb75ce19f0fb1d70c1
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Mon May 4 09:26:20 2015 -0700
+
+    Branch for CDH5.4.1
+
+commit 08cb39b0ee5f74515bc1c42f7889a5219699b309
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Mon Mar 16 10:46:01 2015 -0700
+
+    Preparing for CDH5.4.1
+
+commit 0082a5b0713c04ee9328c75a33d01c8065aab9aa
+Author: julien <julien@twitter.com>
+Date:   Fri Aug 29 17:33:19 2014 -0700
+
+    PARQUET-79: add a streaming Thrift API, to enable processing the metadata as we read it and skipping unnecessary fields.
+    
+    This pull request provides an API to read thrift in a streaming fashion.
+    This enables ignoring fields that are not needed without loading them into memory.
+    It also aloow treating the data as it comes instead of when it's fully loaded in memory.
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #8 from julienledem/streaming_metadata and squashes the following commits:
+    
+    621769a [julien] cleanup refactoring
+    a58913d [julien] rename add to consume
+    e5c78fc [julien] #simplify
+    cb386ce [julien] RIP TypedConsumerProvider, @tsdeng did not like you
+    8dd801e [julien] Merge branch 'master' into streaming_metadata
+    958726f [julien] javadoc; fix apis
+    9be786a [julien] added simple readMetaData method
+    bee937a [julien] refactor, cleanup
+    6368bdc [julien] streaming thrift reader
+    71c85de [julien] first stab
+
+commit f8f65a43540d76ebaf2c48d8437de40819f349b2
+Author: Jacques Nadeau <jacques@apache.org>
+Date:   Wed Jul 30 08:55:46 2014 -0700
+
+    PARQUET-12: Add format support for additional converted types.
+    
+    Author: Jacques Nadeau <jacques@apache.org>
+    
+    Closes #3 from jacques-n/PARQUET-12 and squashes the following commits:
+    
+    7001502 [Jacques Nadeau] Remove micros implementations until everyone is agreed on micros versus nanos.
+    b0e067c [Jacques Nadeau] PARQUET-12: Add format support for additional converted types.
+
+commit d4cb2ddd63ac42899802d405922adee91d44384b
+Author: julien <julien@twitter.com>
+Date:   Tue May 27 15:14:27 2014 -0700
+
+    fix id
+    
+    Conflicts:
+    	src/thrift/parquet.thrift
+    Resolution:
+            This fixes the conflict in the last commit.
+
+commit 0095112704c438bec8bbd579384fe17e0a2e052d
+Author: Julien Le Dem <julien@twitter.com>
+Date:   Tue Mar 4 14:46:09 2014 -0800
+
+    add field_id in SchemaElement
+    Conflicts:
+    	src/thrift/parquet.thrift
+    Resolution:
+            This is expected and was fixed upstream by merging master into
+            the working branch.
+
+commit 71f1c47f78d7563a96c7f1288b2fc750f957b12b
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Tue Oct 28 10:21:40 2014 -0700
+
+    Preparing for CDH5.4.0 development
+
+commit 2fb0ee4a9e531ea9aaa5cbeafffc90af9583934e
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Fri Sep 26 09:26:30 2014 -0700
+
+    Preparing for CDH5.3.0 development
+
+commit e319db54e2e2767d3d8d47a699941cfd1e6c5705
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Jul 28 09:19:33 2014 -0700
+
+    CLOUDERA-BUILD. Use CDH5 parent pom and repositories.

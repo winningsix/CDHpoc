@@ -1,0 +1,76 @@
+From c89be03bbe08f970d7687ec4a252324347156bf9 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Thu, 5 Feb 2015 16:51:20 -0800
+Subject: [PATCH 58/93] CLOUDERA-BUILD. Add ParquetInputSplit methods removed in 5dafd12.
+
+These methods are no longer used internally, but should be present for
+compatibility. They were removed upstream because the data is no longer
+present: blocks are now offsets, no file schema or file metadata is
+passed in. The deprecated implementations have reasonable defaults to
+avoid problems, but this is a behavior change.
+
+This adds back:
+* List<BlockMetaData> getBlocks() - returns an empty list
+* String getFileSchema() - returns null
+* Map<String, String> getExtraMetadata() - returns an empty map
+
+The remaining incompatible changes are fixed in ccfca8f.
+---
+ .../java/parquet/hadoop/ParquetInputSplit.java     |   27 ++++++++++++++++++++
+ 1 files changed, 27 insertions(+), 0 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+index 399be64..3e8ebb7 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+@@ -108,6 +108,15 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   }
+ 
+   /**
++   * @return the block meta data
++   * @deprecated the file footer is no longer read before creating input splits
++   */
++  @Deprecated
++  public List<BlockMetaData> getBlocks() {
++    return Arrays.asList();
++  }
++
++  /**
+    * @param file the path of the file for that split
+    * @param start the start offset in the file
+    * @param end the end offset in the file
+@@ -137,6 +146,15 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   }
+ 
+   /**
++   * @return the file schema
++   * @deprecated the file footer is no longer read before creating input splits
++   */
++  @Deprecated
++  public String getFileSchema() {
++    return null;
++  }
++
++  /**
+    * @return the end offset of that split
+    */
+   long getEnd() {
+@@ -144,6 +162,15 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   }
+ 
+   /**
++   * @return app specific metadata from the file
++   * @deprecated the file footer is no longer read before creating input splits
++   */
++  @Deprecated
++  public Map<String, String> getExtraMetadata() {
++    return new HashMap<String, String>();
++  }
++
++  /**
+    * @return app specific metadata provided by the read support in the init phase
+    */
+   Map<String, String> getReadSupportMetadata() {
+-- 
+1.7.0.4
+

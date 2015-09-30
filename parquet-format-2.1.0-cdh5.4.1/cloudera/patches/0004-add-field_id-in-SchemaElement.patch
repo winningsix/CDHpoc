@@ -1,0 +1,33 @@
+From 0095112704c438bec8bbd579384fe17e0a2e052d Mon Sep 17 00:00:00 2001
+From: Julien Le Dem <julien@twitter.com>
+Date: Tue, 4 Mar 2014 14:46:09 -0800
+Subject: [PATCH 4/9] add field_id in SchemaElement
+ Conflicts:
+ 	src/thrift/parquet.thrift
+ Resolution:
+         This is expected and was fixed upstream by merging master into
+         the working branch.
+
+---
+ src/thrift/parquet.thrift |    5 +++++
+ 1 files changed, 5 insertions(+), 0 deletions(-)
+
+diff --git a/src/thrift/parquet.thrift b/src/thrift/parquet.thrift
+index 52dea7f..8ee6b44 100644
+--- a/src/thrift/parquet.thrift
++++ b/src/thrift/parquet.thrift
+@@ -147,6 +147,11 @@ struct SchemaElement {
+    */
+   7: optional i32 scale
+   8: optional i32 precision
++  
++  /** When the original schema supports field ids, this will save the 
++   * original field id in the parquet schema
++   */
++  7: optional i32 field_id;
+ }
+ 
+ /**
+-- 
+1.7.0.4
+

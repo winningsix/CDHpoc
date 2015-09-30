@@ -1,0 +1,30 @@
+From 26e8d40e1903d8a2553cb3f77a207fd215ef7cc7 Mon Sep 17 00:00:00 2001
+From: julien <julien@twitter.com>
+Date: Tue, 9 Sep 2014 15:45:20 -0700
+Subject: [PATCH 47/93] upgrade scalatest_version to depend on scala 2.10.4
+
+Author: julien <julien@twitter.com>
+
+Closes #52 from julienledem/scalatest_version and squashes the following commits:
+
+945fa75 [julien] upgrade scalatest_version to depend on scala 2.10.4
+---
+ parquet-scala/pom.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-scala/pom.xml b/parquet-scala/pom.xml
+index 79d7703..9031266 100644
+--- a/parquet-scala/pom.xml
++++ b/parquet-scala/pom.xml
+@@ -43,7 +43,7 @@
+     <dependency>
+       <groupId>org.scalatest</groupId>
+       <artifactId>scalatest_${scala.binary.version}</artifactId>
+-      <version>1.9.2</version>
++      <version>2.2.1</version>
+       <scope>test</scope>
+     </dependency>
+   </dependencies>
+-- 
+1.7.0.4
+

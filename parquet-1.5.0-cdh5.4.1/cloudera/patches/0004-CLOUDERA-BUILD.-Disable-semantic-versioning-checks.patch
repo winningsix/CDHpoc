@@ -1,0 +1,35 @@
+From 9f9aee2153f2b73d1e9f283c7264d2af63380e76 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sun, 27 Jul 2014 14:59:51 -0700
+Subject: [PATCH 04/93] CLOUDERA-BUILD. Disable semantic versioning checks.
+
+---
+ pom.xml |    5 +++--
+ 1 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index d3996d7..28c6908 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -211,7 +211,8 @@
+               <artifactId>enforcer-rule</artifactId>
+               <version>0.9.23</version>
+             </dependency>
+-         </dependencies>
++          </dependencies>
++          <!--
+          <executions>
+            <execution>
+              <id>check</id>
+@@ -231,7 +232,7 @@
+                </rules>
+              </configuration>
+            </execution>
+-         </executions>
++         </executions>-->
+         </plugin>
+         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+-- 
+1.7.0.4
+

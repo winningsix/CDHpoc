@@ -1,0 +1,152 @@
+From e94ef61c1c444c0a1c5b58a4a9b595ac79715564 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Wed, 4 Mar 2015 12:11:50 -0800
+Subject: [PATCH 78/93] PARQUET-191: Fix map Type to Avro Schema conversion.
+
+Author: Ryan Blue <blue@apache.org>
+
+Closes #126 from rdblue/PARQUET-191-fix-map-value-conversion and squashes the following commits:
+
+33f6bbc [Ryan Blue] PARQUET-191: Fix map Type to Avro Schema conversion.
+---
+ .../parquet/avro/AvroIndexedRecordConverter.java   |    4 +-
+ .../java/parquet/avro/AvroSchemaConverter.java     |   19 ++++++++----
+ .../java/parquet/avro/TestAvroSchemaConverter.java |   31 +++++++++++++++++--
+ 3 files changed, 42 insertions(+), 12 deletions(-)
+
+diff --git a/parquet-avro/src/main/java/parquet/avro/AvroIndexedRecordConverter.java b/parquet-avro/src/main/java/parquet/avro/AvroIndexedRecordConverter.java
+index 48dbd3c..85804ad 100644
+--- a/parquet-avro/src/main/java/parquet/avro/AvroIndexedRecordConverter.java
++++ b/parquet-avro/src/main/java/parquet/avro/AvroIndexedRecordConverter.java
+@@ -563,8 +563,8 @@ class AvroIndexedRecordConverter<T extends IndexedRecord> extends GroupConverter
+         };
+ 
+         Type valueType = parquetSchema.asGroupType().getType(0).asGroupType().getType(1);
+-        Schema valueSchema = avroSchema.getValueType();
+-        valueConverter = newConverter(valueSchema, valueType, model, new ParentValueContainer() {
++        Schema nonNullValueSchema = AvroSchemaConverter.getNonNull(avroSchema.getValueType());
++        valueConverter = newConverter(nonNullValueSchema, valueType, model, new ParentValueContainer() {
+           @Override
+           @SuppressWarnings("unchecked")
+           void add(Object value) {
+diff --git a/parquet-avro/src/main/java/parquet/avro/AvroSchemaConverter.java b/parquet-avro/src/main/java/parquet/avro/AvroSchemaConverter.java
+index 6aec668..986776c 100644
+--- a/parquet-avro/src/main/java/parquet/avro/AvroSchemaConverter.java
++++ b/parquet-avro/src/main/java/parquet/avro/AvroSchemaConverter.java
+@@ -189,11 +189,7 @@ public class AvroSchemaConverter {
+       if (parquetType.isRepetition(Type.Repetition.REPEATED)) {
+         throw new UnsupportedOperationException("REPEATED not supported outside LIST or MAP. Type: " + parquetType);
+       } else if (parquetType.isRepetition(Type.Repetition.OPTIONAL)) {
+-        List<Schema> types = new ArrayList<Schema>();
+-        types.add(Schema.create(Schema.Type.NULL));
+-        types.add(fieldSchema);
+-        Schema optionalFieldSchema = Schema.createUnion(types);
+-        fields.add(new Schema.Field(parquetType.getName(), optionalFieldSchema, null,
++        fields.add(new Schema.Field(parquetType.getName(), optional(fieldSchema), null,
+             NullNode.getInstance()));
+       } else { // REQUIRED
+         fields.add(new Schema.Field(parquetType.getName(), fieldSchema, null, null));
+@@ -281,7 +277,11 @@ public class AvroSchemaConverter {
+                   + keyType);
+             }
+             Type valueType = mapKeyValType.getType(1);
+-            return Schema.createMap(convertField(valueType));
++            if (valueType.isRepetition(Type.Repetition.OPTIONAL)) {
++              return Schema.createMap(optional(convertField(valueType)));
++            } else {
++              return Schema.createMap(convertField(valueType));
++            }
+           case ENUM:
+             return Schema.create(Schema.Type.STRING);
+           case MAP_KEY_VALUE:
+@@ -297,4 +297,11 @@ public class AvroSchemaConverter {
+       }
+     }
+   }
++
++  private static Schema optional(Schema original) {
++    // null is first in the union because Parquet's default is always null
++    return Schema.createUnion(Arrays.asList(
++        Schema.create(Schema.Type.NULL),
++        original));
++  }
+ }
+diff --git a/parquet-avro/src/test/java/parquet/avro/TestAvroSchemaConverter.java b/parquet-avro/src/test/java/parquet/avro/TestAvroSchemaConverter.java
+index 575a7ac..efdc9ed 100644
+--- a/parquet-avro/src/test/java/parquet/avro/TestAvroSchemaConverter.java
++++ b/parquet-avro/src/test/java/parquet/avro/TestAvroSchemaConverter.java
+@@ -148,6 +148,7 @@ public class TestAvroSchemaConverter {
+   public void testAllTypesParquetToAvro() throws Exception {
+     Schema schema = new Schema.Parser().parse(
+         Resources.getResource("allFromParquet.avsc").openStream());
++    // Cannot use round-trip assertion because enum is lost
+     testParquetToAvroConversion(schema, ALL_PARQUET_SCHEMA);
+   }
+ 
+@@ -173,7 +174,7 @@ public class TestAvroSchemaConverter {
+     schema.setFields(Arrays.asList(
+         new Schema.Field("myint", optionalInt, null, NullNode.getInstance())
+     ));
+-    testAvroToParquetConversion(
++    testRoundTripConversion(
+         schema,
+         "message record1 {\n" +
+             "  optional int32 myint;\n" +
+@@ -181,6 +182,25 @@ public class TestAvroSchemaConverter {
+   }
+ 
+   @Test
++  public void testOptionalMapValue() throws Exception {
++    Schema schema = Schema.createRecord("record1", null, null, false);
++    Schema optionalIntMap = Schema.createMap(optional(Schema.create(Schema.Type.INT)));
++    schema.setFields(Arrays.asList(
++        new Schema.Field("myintmap", optionalIntMap, null, null)
++    ));
++    testRoundTripConversion(
++        schema,
++        "message record1 {\n" +
++            "  required group myintmap (MAP) {\n" +
++            "    repeated group map (MAP_KEY_VALUE) {\n" +
++            "      required binary key (UTF8);\n" +
++            "      optional int32 value;\n" +
++            "    }\n" +
++            "  }\n" +
++            "}\n");
++  }
++
++  @Test
+   public void testUnionOfTwoTypes() throws Exception {
+     Schema schema = Schema.createRecord("record2", null, null, false);
+     Schema multipleTypes = Schema.createUnion(Arrays.asList(Schema.create(Schema.Type
+@@ -190,7 +210,8 @@ public class TestAvroSchemaConverter {
+     schema.setFields(Arrays.asList(
+         new Schema.Field("myunion", multipleTypes, null, NullNode.getInstance())));
+ 
+-    // Avro union is modelled using optional data members of thw different types;
++    // Avro union is modelled using optional data members of the different
++    // types. This does not translate back into an Avro union
+     testAvroToParquetConversion(
+         schema,
+         "message record2 {\n" +
+@@ -216,6 +237,7 @@ public class TestAvroSchemaConverter {
+     ));
+     System.err.println("Avro schema: " + schema.toString(true));
+ 
++    // Cannot use round-trip assertion because InnerRecord optional is removed
+     testAvroToParquetConversion(schema, "message HasArray {\n" +
+         "  required group myarray (LIST) {\n" +
+         "    repeated group array {\n" +
+@@ -227,7 +249,8 @@ public class TestAvroSchemaConverter {
+   }
+ 
+   public static Schema optional(Schema original) {
+-    return Schema.createUnion(Lists.newArrayList(original,
+-        Schema.create(Schema.Type.NULL)));
++    return Schema.createUnion(Lists.newArrayList(
++        Schema.create(Schema.Type.NULL),
++        original));
+   }
+ }
+-- 
+1.7.0.4
+

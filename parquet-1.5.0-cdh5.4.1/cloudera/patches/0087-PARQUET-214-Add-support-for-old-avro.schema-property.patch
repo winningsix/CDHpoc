@@ -1,0 +1,111 @@
+From 2d14b857515224fea5de5052acd09601f6172444 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Tue, 10 Mar 2015 11:42:42 -0700
+Subject: [PATCH 87/93] PARQUET-214: Add support for old avro.schema property.
+
+This also adds a test with an old test file created by parquet-avro.
+---
+ .../main/java/parquet/avro/AvroReadSupport.java    |    5 ++
+ .../parquet/avro/TestBackwardCompatibility.java    |   51 ++++++++++++++++++++
+ parquet-avro/src/test/resources/strings-2.parquet  |  Bin 0 -> 282 bytes
+ 3 files changed, 56 insertions(+), 0 deletions(-)
+ create mode 100644 parquet-avro/src/test/java/parquet/avro/TestBackwardCompatibility.java
+ create mode 100644 parquet-avro/src/test/resources/strings-2.parquet
+
+diff --git a/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java b/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
+index 2756ac6..b23457c 100644
+--- a/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
++++ b/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
+@@ -39,6 +39,8 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
+   private static final String AVRO_READ_SCHEMA = "parquet.avro.read.schema";
+ 
+   static final String AVRO_SCHEMA_METADATA_KEY = "parquet.avro.schema";
++  // older files were written with the schema in this metadata key
++  static final String OLD_AVRO_SCHEMA_METADATA_KEY = "avro.schema";
+   private static final String AVRO_READ_SCHEMA_METADATA_KEY = "avro.read.schema";
+ 
+   public static String AVRO_DATA_SUPPLIER = "parquet.avro.data.supplier";
+@@ -97,6 +99,9 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
+     } else if (keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY) != null) {
+       // use the Avro schema from the file metadata if present
+       avroSchema = new Schema.Parser().parse(keyValueMetaData.get(AVRO_SCHEMA_METADATA_KEY));
++    } else if (keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY) != null) {
++      // use the Avro schema from the file metadata if present
++      avroSchema = new Schema.Parser().parse(keyValueMetaData.get(OLD_AVRO_SCHEMA_METADATA_KEY));
+     } else {
+       // default to converting the Parquet schema into an Avro schema
+       avroSchema = new AvroSchemaConverter(configuration).convert(parquetSchema);
+diff --git a/parquet-avro/src/test/java/parquet/avro/TestBackwardCompatibility.java b/parquet-avro/src/test/java/parquet/avro/TestBackwardCompatibility.java
+new file mode 100644
+index 0000000..4e614b5
+--- /dev/null
++++ b/parquet-avro/src/test/java/parquet/avro/TestBackwardCompatibility.java
+@@ -0,0 +1,51 @@
++/**
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ *   http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++package parquet.avro;
++
++import com.google.common.io.Resources;
++import java.io.IOException;
++import org.apache.avro.generic.GenericRecord;
++import org.apache.hadoop.conf.Configuration;
++import org.apache.hadoop.fs.Path;
++import org.junit.Assert;
++import org.junit.Test;
++import parquet.hadoop.ParquetReader;
++
++public class TestBackwardCompatibility {
++
++  @Test
++  public void testStringCompatibility() throws IOException {
++    // some older versions of Parquet used avro.schema instead of
++    // parquet.avro.schema and didn't annotate binary with UTF8 when the type
++    // was converted from an Avro string. this validates that the old read
++    // schema is recognized and used to read the file as expected.
++    Path testFile = new Path(Resources.getResource("strings-2.parquet").getFile());
++    Configuration conf = new Configuration();
++    ParquetReader<GenericRecord> reader = AvroParquetReader
++        .builder(new AvroReadSupport<GenericRecord>(), testFile)
++        .withConf(conf)
++        .build();
++    GenericRecord r;
++    while ((r = reader.read()) != null) {
++      Assert.assertTrue("Should read value into a String",
++          r.get("text") instanceof String);
++    }
++  }
++
++}
+diff --git a/parquet-avro/src/test/resources/strings-2.parquet b/parquet-avro/src/test/resources/strings-2.parquet
+new file mode 100644
+index 0000000000000000000000000000000000000000..3b1c94a9364b6af88e4a9399f449976accfc0457
+GIT binary patch
+literal 282
+zcmX|7!D_-l5FI3kEqdLMg&e|yVj(SAl4w>>z4cV2M@tWzWK#nh*KXFfB7SWDq$^fW
+zGw(fS-kVuHy)q2Az(tHb*C31lh5)dUO6llZ8&%)kV52o2koXyOhu)fY`+*05M`H*)
+zD}OBb9tlY}K_MQIF#>X-vE%)<zn-|wu6jViU?{$fe(bA_>_qT#r1r3rbU}@*w5e%K
+zx1u}atBqrtR;s$Ei?`!dJX<>9fAo@vp59LoEO)|u?xlU`Of)U`t*WDp&67OkB^SJ`
+f1fR>SNm<SrOJ~Wf$a9ggDlL=d9)8`mEBBQ@e=$fP
+
+literal 0
+HcmV?d00001
+
+-- 
+1.7.0.4
+

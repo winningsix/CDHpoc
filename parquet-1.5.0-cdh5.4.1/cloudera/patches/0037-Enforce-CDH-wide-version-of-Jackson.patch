@@ -1,0 +1,39 @@
+From 8633c488d161fbec98e08248ffbbd1c0469e6eb5 Mon Sep 17 00:00:00 2001
+From: Tom White <tom@cloudera.com>
+Date: Wed, 29 Oct 2014 20:48:23 +0000
+Subject: [PATCH 37/93] Enforce CDH-wide version of Jackson.
+
+---
+ .../parquet/thrift/struct/CompatibilityRunner.java |    2 +-
+ pom.xml                                            |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/parquet-thrift/src/main/java/parquet/thrift/struct/CompatibilityRunner.java b/parquet-thrift/src/main/java/parquet/thrift/struct/CompatibilityRunner.java
+index afc0b04..5342424 100644
+--- a/parquet-thrift/src/main/java/parquet/thrift/struct/CompatibilityRunner.java
++++ b/parquet-thrift/src/main/java/parquet/thrift/struct/CompatibilityRunner.java
+@@ -89,7 +89,7 @@ public class CompatibilityRunner {
+     ObjectMapper mapper = new ObjectMapper();
+ 
+     String fileName = catName + ".json";
+-    mapper.writerWithDefaultPrettyPrinter().writeValue(new File(storeDir, fileName), structType);
++    mapper.writer().withDefaultPrettyPrinter().writeValue(new File(storeDir, fileName), structType);
+   }
+ 
+ 
+diff --git a/pom.xml b/pom.xml
+index 85646ee..f8dff9d 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -106,7 +106,7 @@
+     <github.global.server>github</github.global.server>
+     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+     <jackson.groupId>org.codehaus.jackson</jackson.groupId>
+-    <jackson.version>1.9.11</jackson.version>
++    <jackson.version>${cdh.jackson.version}</jackson.version>
+     <jackson.package>org.codehaus.jackson</jackson.package>
+     <shade.prefix>parquet</shade.prefix>
+     <hadoop.version>${cdh.hadoop.version}</hadoop.version>
+-- 
+1.7.0.4
+

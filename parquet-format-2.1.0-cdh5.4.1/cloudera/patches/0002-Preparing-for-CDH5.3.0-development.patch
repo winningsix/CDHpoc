@@ -1,0 +1,32 @@
+From 2fb0ee4a9e531ea9aaa5cbeafffc90af9583934e Mon Sep 17 00:00:00 2001
+From: Jenkins slave <kitchen-build@cloudera.com>
+Date: Fri, 26 Sep 2014 09:26:30 -0700
+Subject: [PATCH 2/9] Preparing for CDH5.3.0 development
+
+---
+ pom.xml |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index b513eaa..d3fe8fb 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -4,13 +4,13 @@
+   <parent>
+     <groupId>com.cloudera.cdh</groupId>
+     <artifactId>cdh-root</artifactId>
+-    <version>5.2.0-SNAPSHOT</version>
++    <version>5.3.0-SNAPSHOT</version>
+     <relativePath></relativePath><!-- no parent resolution -->
+   </parent>
+ 
+   <groupId>com.twitter</groupId>
+   <artifactId>parquet-format</artifactId>
+-  <version>2.1.0-cdh5.2.0-SNAPSHOT</version>
++  <version>2.1.0-cdh5.3.0-SNAPSHOT</version>
+   <packaging>jar</packaging>
+ 
+   <name>parquet format metadata</name>
+-- 
+1.7.0.4
+

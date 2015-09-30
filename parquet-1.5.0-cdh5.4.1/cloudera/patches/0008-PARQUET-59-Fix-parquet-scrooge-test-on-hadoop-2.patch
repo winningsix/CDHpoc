@@ -1,0 +1,34 @@
+From 532b752e96ed2251add1ca366363582902c80667 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 4 Aug 2014 19:04:18 -0700
+Subject: [PATCH 08/93] PARQUET-59: Fix parquet-scrooge test on hadoop-2.
+
+Author: Ryan Blue <rblue@cloudera.com>
+
+Closes #27 from rdblue/PARQUET-59-fix-scrooge-test-on-hadoop-2 and squashes the following commits:
+
+ac34369 [Ryan Blue] PARQUET-59: Fix parquet-scrooge test on hadoop-2.
+---
+ .../parquet/scrooge/ParquetScroogeSchemeTest.java  |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/parquet-scrooge/src/test/java/parquet/scrooge/ParquetScroogeSchemeTest.java b/parquet-scrooge/src/test/java/parquet/scrooge/ParquetScroogeSchemeTest.java
+index de74bb7..399ff61 100644
+--- a/parquet-scrooge/src/test/java/parquet/scrooge/ParquetScroogeSchemeTest.java
++++ b/parquet-scrooge/src/test/java/parquet/scrooge/ParquetScroogeSchemeTest.java
+@@ -97,10 +97,10 @@ public class ParquetScroogeSchemeTest {
+     job.setInputFormatClass(ParquetThriftInputFormat.class);
+     ParquetThriftInputFormat.setInputPaths(job, parquetFile);
+     final JobID jobID = new JobID("local", 1);
+-    List<InputSplit> splits = parquetScroogeInputFormat.getSplits(new JobContext(ContextUtil.getConfiguration(job), jobID));
++    List<InputSplit> splits = parquetScroogeInputFormat.getSplits(ContextUtil.newJobContext(ContextUtil.getConfiguration(job), jobID));
+     T readValue = null;
+     for (InputSplit split : splits) {
+-      TaskAttemptContext taskAttemptContext = new TaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
++      TaskAttemptContext taskAttemptContext = ContextUtil.newTaskAttemptContext(ContextUtil.getConfiguration(job), new TaskAttemptID(new TaskID(jobID, true, 1), 0));
+       final RecordReader<Void, T> reader = parquetScroogeInputFormat.createRecordReader(split, taskAttemptContext);
+       reader.initialize(split, taskAttemptContext);
+       if (reader.nextKeyValue()) {
+-- 
+1.7.0.4
+

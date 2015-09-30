@@ -1,0 +1,61 @@
+From 7d9407e63249b7ec9239208b45e47f68afe7defc Mon Sep 17 00:00:00 2001
+From: Tom White <tom@cloudera.com>
+Date: Mon, 3 Nov 2014 14:37:17 +0000
+Subject: [PATCH 36/93] CLOUDERA-BUILD. Add javaVersion property and enforce it.
+
+---
+ pom.xml |   31 +++++++++++++++++++++++++++++++
+ 1 files changed, 31 insertions(+), 0 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 1f2d27f..85646ee 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -98,6 +98,7 @@
+   </pluginRepositories>
+ 
+   <properties>
++    <javaVersion>1.7</javaVersion>
+     <targetJavaVersion>1.6</targetJavaVersion>
+     <maven.compiler.source>1.6</maven.compiler.source>
+     <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
+@@ -241,6 +242,36 @@
+              </configuration>
+            </execution>
+          </executions>-->
++          <configuration>
++            <rules>
++              <requireJavaVersion>
++                <version>[${javaVersion}.0,${javaVersion}.1000}]</version>
++              </requireJavaVersion>
++            </rules>
++          </configuration>
++          <executions>
++            <execution>
++              <id>clean</id>
++              <goals>
++                <goal>enforce</goal>
++              </goals>
++              <phase>pre-clean</phase>
++            </execution>
++            <execution>
++              <id>default</id>
++              <goals>
++                <goal>enforce</goal>
++              </goals>
++              <phase>validate</phase>
++            </execution>
++            <execution>
++              <id>site</id>
++              <goals>
++                <goal>enforce</goal>
++              </goals>
++              <phase>pre-site</phase>
++            </execution>
++          </executions>
+         </plugin>
+         <plugin>
+          <groupId>org.apache.maven.plugins</groupId>
+-- 
+1.7.0.4
+

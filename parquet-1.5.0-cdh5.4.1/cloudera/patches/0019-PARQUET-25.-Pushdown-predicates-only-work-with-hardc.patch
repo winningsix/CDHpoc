@@ -1,0 +1,53 @@
+From ec8f54af732ebc2c3439a260d9e7205b8234d0cf Mon Sep 17 00:00:00 2001
+From: Sandy Ryza <sandy.ryza@cloudera.com>
+Date: Wed, 23 Jul 2014 14:29:35 +0100
+Subject: [PATCH 19/93] PARQUET-25. Pushdown predicates only work with hardcoded arguments.
+
+Pull request for Sandy Ryza's fix for PARQUET-25.
+
+Author: Sandy Ryza <sandy.ryza@cloudera.com>
+
+Closes #22 from tomwhite/PARQUET-25-unbound-record-filter-configurable and squashes the following commits:
+
+a9d3fdc [Sandy Ryza] PARQUET-25. Pushdown predicates only work with hardcoded arguments.
+---
+ .../java/parquet/hadoop/ParquetInputFormat.java    |   12 +++++++++---
+ 1 files changed, 9 insertions(+), 3 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java
+index ef15542..19b268f 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java
+@@ -26,6 +26,7 @@ import java.util.List;
+ import java.util.Map;
+ import java.util.Set;
+ 
++import org.apache.hadoop.conf.Configurable;
+ import org.apache.hadoop.conf.Configuration;
+ import org.apache.hadoop.fs.BlockLocation;
+ import org.apache.hadoop.fs.FileStatus;
+@@ -129,13 +130,18 @@ public class ParquetInputFormat<T> extends FileInputFormat<Void, T> {
+   public RecordReader<Void, T> createRecordReader(
+       InputSplit inputSplit,
+       TaskAttemptContext taskAttemptContext) throws IOException, InterruptedException {
+-    ReadSupport<T> readSupport = getReadSupport(ContextUtil.getConfiguration(taskAttemptContext));
+-    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(ContextUtil.getConfiguration(taskAttemptContext));
++    Configuration conf = ContextUtil.getConfiguration(taskAttemptContext);
++    ReadSupport<T> readSupport = getReadSupport(conf);
++    Class<?> unboundRecordFilterClass = getUnboundRecordFilter(conf);
+     if (unboundRecordFilterClass == null) {
+       return new ParquetRecordReader<T>(readSupport);
+     } else {
+       try {
+-        return new ParquetRecordReader<T>(readSupport, (UnboundRecordFilter)unboundRecordFilterClass.newInstance());
++        UnboundRecordFilter filter = (UnboundRecordFilter)unboundRecordFilterClass.newInstance();
++        if (filter instanceof Configurable) {
++          ((Configurable)filter).setConf(conf);
++        }
++        return new ParquetRecordReader<T>(readSupport, filter);
+       } catch (InstantiationException e) {
+         throw new BadConfigurationException("could not instantiate unbound record filter class", e);
+       } catch (IllegalAccessException e) {
+-- 
+1.7.0.4
+

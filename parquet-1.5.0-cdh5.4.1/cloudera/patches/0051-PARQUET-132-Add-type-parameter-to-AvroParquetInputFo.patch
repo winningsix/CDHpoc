@@ -1,0 +1,30 @@
+From 98e688efb0d0594b19fcce26b0896af1314b8800 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Tue, 18 Nov 2014 20:20:04 -0800
+Subject: [PATCH 51/93] PARQUET-132: Add type parameter to AvroParquetInputFormat.
+
+Author: Ryan Blue <blue@apache.org>
+
+Closes #84 from rdblue/PARQUET-132-parameterize-avro-inputformat and squashes the following commits:
+
+63114b0 [Ryan Blue] PARQUET-132: Add type parameter to AvroParquetInputFormat.
+---
+ .../java/parquet/avro/AvroParquetInputFormat.java  |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-avro/src/main/java/parquet/avro/AvroParquetInputFormat.java b/parquet-avro/src/main/java/parquet/avro/AvroParquetInputFormat.java
+index df1b739..232e5c8 100644
+--- a/parquet-avro/src/main/java/parquet/avro/AvroParquetInputFormat.java
++++ b/parquet-avro/src/main/java/parquet/avro/AvroParquetInputFormat.java
+@@ -24,7 +24,7 @@ import parquet.hadoop.util.ContextUtil;
+ /**
+  * A Hadoop {@link org.apache.hadoop.mapreduce.InputFormat} for Parquet files.
+  */
+-public class AvroParquetInputFormat extends ParquetInputFormat<IndexedRecord> {
++public class AvroParquetInputFormat<T> extends ParquetInputFormat<T> {
+   public AvroParquetInputFormat() {
+     super(AvroReadSupport.class);
+   }
+-- 
+1.7.0.4
+

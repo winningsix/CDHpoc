@@ -1,0 +1,143 @@
+From 12346b3cfb934f74e213f3adde7e2028815452e3 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Thu, 28 Aug 2014 17:56:07 -0700
+Subject: [PATCH 12/93] CLOUDERA-BUILD. Add back ctors removed since 1.2.5.
+
+Jdiff reports that from 1.2.5-cdh5.0.0 to 1.5.0-cdh5.2.0, the API has
+had 4 removals:
+* constructor ParquetThriftBytesOutputFormat(TProtocolFactory,
+                                  Class<TBase<?, ?>>, boolean)
+* constructor ParquetWriter(Path, WriteSupport<T>, CompressionCodecName,
+              int, int,int, boolean, boolean, Configuration) constructor
+
+* constructor ThriftBytesWriteSupport (TProtocolFactory,
+                            Class<TBase<?, ?>>, boolean)
+* constructor ThriftToParquetFileWriter (Path, TaskAttemptContext,
+                    TProtocolFactory, Class<TBase<?, ?>>, boolean)
+
+This commits adds these constructors back to ensure compatibility.
+---
+ .../main/java/parquet/hadoop/ParquetWriter.java    |   36 ++++++++++++++++++++
+ .../thrift/ParquetThriftBytesOutputFormat.java     |   13 +++++++
+ .../hadoop/thrift/ThriftBytesWriteSupport.java     |    4 ++
+ .../hadoop/thrift/ThriftToParquetFileWriter.java   |   18 ++++++++++
+ 4 files changed, 71 insertions(+), 0 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetWriter.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetWriter.java
+index 9c24475..b8d584c 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetWriter.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetWriter.java
+@@ -154,6 +154,42 @@ public class ParquetWriter<T> implements Closeable {
+    * @param dictionaryPageSize the page size threshold for the dictionary pages
+    * @param enableDictionary to turn dictionary encoding on
+    * @param validating to turn on validation using the schema
++   * @param conf Hadoop configuration to use while accessing the filesystem
++   * @throws IOException
++   */
++  public ParquetWriter(
++      Path file,
++      WriteSupport<T> writeSupport,
++      CompressionCodecName compressionCodecName,
++      int blockSize,
++      int pageSize,
++      int dictionaryPageSize,
++      boolean enableDictionary,
++      boolean validating,
++      Configuration conf) throws IOException {
++    this(file,
++        writeSupport,
++        compressionCodecName,
++        blockSize,
++        pageSize,
++        dictionaryPageSize,
++        enableDictionary,
++        validating,
++        WriterVersion.PARQUET_1_0,
++        conf);
++  }
++
++  /**
++   * Create a new ParquetWriter.
++   *
++   * @param file the file to create
++   * @param writeSupport the implementation to write a record to a RecordConsumer
++   * @param compressionCodecName the compression codec to use
++   * @param blockSize the block size threshold
++   * @param pageSize the page size threshold
++   * @param dictionaryPageSize the page size threshold for the dictionary pages
++   * @param enableDictionary to turn dictionary encoding on
++   * @param validating to turn on validation using the schema
+    * @param writerVersion version of parquetWriter from {@link ParquetProperties.WriterVersion}
+    * @param conf Hadoop configuration to use while accessing the filesystem
+    * @throws IOException
+diff --git a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ParquetThriftBytesOutputFormat.java b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ParquetThriftBytesOutputFormat.java
+index e5b180e..94f3988 100644
+--- a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ParquetThriftBytesOutputFormat.java
++++ b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ParquetThriftBytesOutputFormat.java
+@@ -61,6 +61,19 @@ public class ParquetThriftBytesOutputFormat extends ParquetOutputFormat<BytesWri
+    * @param protocolFactory the protocol factory to use to read the bytes
+    * @param thriftClass thriftClass the class to exctract the schema from
+    * @param buffered whether we should buffer each record
++   */
++  public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<TBase<?, ?>> thriftClass, boolean buffered) {
++    super(new ThriftBytesWriteSupport(protocolFactory, thriftClass, buffered));
++  }
++
++  /**
++   *  The buffered implementation will buffer each record and deal with invalid records (more expansive).
++   *  when catching an exception the record can be discarded.
++   *  The non-buffered implementation will stream field by field. Exceptions are unrecoverable and the file must be closed when an invalid record is written.
++   *
++   * @param protocolFactory the protocol factory to use to read the bytes
++   * @param thriftClass thriftClass the class to exctract the schema from
++   * @param buffered whether we should buffer each record
+    * @param errorHandler handle record corruption and schema incompatible exception
+    */
+   public ParquetThriftBytesOutputFormat(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
+diff --git a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
+index 5eb4a30..844165a 100644
+--- a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
++++ b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftBytesWriteSupport.java
+@@ -78,6 +78,10 @@ public class ThriftBytesWriteSupport extends WriteSupport<BytesWritable> {
+     this.errorHandler = null;
+   }
+ 
++  public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<TBase<?, ?>> thriftClass, boolean buffered) {
++    this(protocolFactory, thriftClass, buffered, null);
++  }
++
+   public ThriftBytesWriteSupport(TProtocolFactory protocolFactory, Class<? extends TBase<?, ?>> thriftClass, boolean buffered, FieldIgnoredHandler errorHandler) {
+     super();
+     this.protocolFactory = protocolFactory;
+diff --git a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftToParquetFileWriter.java b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftToParquetFileWriter.java
+index 62794f7..96ee40c 100644
+--- a/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftToParquetFileWriter.java
++++ b/parquet-thrift/src/main/java/parquet/hadoop/thrift/ThriftToParquetFileWriter.java
+@@ -39,6 +39,24 @@ public class ThriftToParquetFileWriter implements Closeable {
+   private final TaskAttemptContext taskAttemptContext;
+ 
+   /**
++   * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
++   * @param taskAttemptContext The current taskAttemptContext
++   * @param protocolFactory to create protocols to read the incoming bytes
++   * @param thriftClass to produce the schema
++   * @param buffered buffer each record individually
++   * @throws IOException if there was a problem writing
++   * @throws InterruptedException from the underlying Hadoop API
++   */
++  public ThriftToParquetFileWriter(
++      Path fileToCreate,
++      TaskAttemptContext taskAttemptContext,
++      TProtocolFactory protocolFactory,
++      Class<? extends TBase<?,?>> thriftClass,
++      boolean buffered) throws IOException, InterruptedException {
++    this(fileToCreate, taskAttemptContext, protocolFactory, thriftClass, buffered, null);
++  }
++
++  /**
+    * defaults to buffered = true
+    * @param fileToCreate the file to create. If null will create the default file name from the taskAttemptContext
+    * @param taskAttemptContext The current taskAttemptContext
+-- 
+1.7.0.4
+

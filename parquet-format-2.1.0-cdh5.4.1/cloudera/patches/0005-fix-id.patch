@@ -1,0 +1,30 @@
+From d4cb2ddd63ac42899802d405922adee91d44384b Mon Sep 17 00:00:00 2001
+From: julien <julien@twitter.com>
+Date: Tue, 27 May 2014 15:14:27 -0700
+Subject: [PATCH 5/9] fix id
+
+Conflicts:
+	src/thrift/parquet.thrift
+Resolution:
+        This fixes the conflict in the last commit.
+---
+ src/thrift/parquet.thrift |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/src/thrift/parquet.thrift b/src/thrift/parquet.thrift
+index 8ee6b44..141a3f1 100644
+--- a/src/thrift/parquet.thrift
++++ b/src/thrift/parquet.thrift
+@@ -151,7 +151,8 @@ struct SchemaElement {
+   /** When the original schema supports field ids, this will save the 
+    * original field id in the parquet schema
+    */
+-  7: optional i32 field_id;
++  9: optional i32 field_id;
++
+ }
+ 
+ /**
+-- 
+1.7.0.4
+

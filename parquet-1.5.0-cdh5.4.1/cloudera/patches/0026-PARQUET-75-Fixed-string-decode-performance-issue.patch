@@ -1,0 +1,48 @@
+From 0e9f24b8e2ff096b6e26093f263c5e8c8c95948e Mon Sep 17 00:00:00 2001
+From: Daniel Weeks <dweeks@netflix.com>
+Date: Thu, 28 Aug 2014 11:30:50 -0700
+Subject: [PATCH 26/93] PARQUET-75: Fixed string decode performance issue
+
+Switch to using 'UTF8.decode' as opposed to 'new String'
+
+https://issues.apache.org/jira/browse/PARQUET-75
+
+Author: Daniel Weeks <dweeks@netflix.com>
+
+Closes #40 from dcw-netflix/string-decode and squashes the following commits:
+
+2cf53e7 [Daniel Weeks] Fixed string decode performance issue
+
+Conflicts:
+	parquet-column/src/main/java/parquet/io/api/Binary.java
+    Resolution: conflict because anon classes are now static classes in
+                master. just backported the fix, which is small.
+---
+ .../src/main/java/parquet/io/api/Binary.java       |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/parquet-column/src/main/java/parquet/io/api/Binary.java b/parquet-column/src/main/java/parquet/io/api/Binary.java
+index 1ef23fb..9caf247 100644
+--- a/parquet-column/src/main/java/parquet/io/api/Binary.java
++++ b/parquet-column/src/main/java/parquet/io/api/Binary.java
+@@ -103,7 +103,7 @@ abstract public class Binary {
+     return new Binary() {
+       @Override
+       public String toStringUsingUTF8() {
+-        return new String(value, BytesUtils.UTF8);
++        return UTF8.decode(ByteBuffer.wrap(value)).toString();
+       }
+ 
+       @Override
+@@ -162,7 +162,7 @@ abstract public class Binary {
+     return new Binary() {
+       @Override
+       public String toStringUsingUTF8() {
+-        return new String(getBytes(), BytesUtils.UTF8);
++        return UTF8.decode(value).toString();
+       }
+ 
+       @Override
+-- 
+1.7.0.4
+

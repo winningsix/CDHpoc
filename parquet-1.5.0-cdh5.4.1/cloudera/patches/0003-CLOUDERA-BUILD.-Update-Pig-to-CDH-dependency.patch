@@ -1,0 +1,82 @@
+From 2cafa0ae0911459bee0ba296238f9817ab733ab6 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sat, 26 Jul 2014 16:37:22 -0700
+Subject: [PATCH 03/93] CLOUDERA-BUILD. Update Pig to CDH dependency.
+
+TestSummary needed to be modified because null is no longer allowed in a
+Bag. Three nulls were removed and the validation method updated to
+reflect the new structure of the test data.
+---
+ parquet-pig/pom.xml                                |    2 +-
+ .../test/java/parquet/pig/summary/TestSummary.java |    8 ++++----
+ parquet-thrift/pom.xml                             |    2 +-
+ pom.xml                                            |    1 +
+ 4 files changed, 7 insertions(+), 6 deletions(-)
+
+diff --git a/parquet-pig/pom.xml b/parquet-pig/pom.xml
+index fcafd72..357ea00 100644
+--- a/parquet-pig/pom.xml
++++ b/parquet-pig/pom.xml
+@@ -36,7 +36,7 @@
+     <dependency>
+       <groupId>org.apache.pig</groupId>
+       <artifactId>pig</artifactId>
+-      <version>0.11.1</version>
++      <version>${pig.version}</version>
+       <scope>provided</scope>
+     </dependency>
+     <dependency>
+diff --git a/parquet-pig/src/test/java/parquet/pig/summary/TestSummary.java b/parquet-pig/src/test/java/parquet/pig/summary/TestSummary.java
+index 6e7a990..794cdd7 100644
+--- a/parquet-pig/src/test/java/parquet/pig/summary/TestSummary.java
++++ b/parquet-pig/src/test/java/parquet/pig/summary/TestSummary.java
+@@ -50,9 +50,9 @@ public class TestSummary {
+       t(b(t(1l), t(2l, m("foo", "bar")), t(3))),
+       t(b(t(1l), t(1l), t(3, "blah"))),
+       t(b(t(1l), t(2l), t(2, "bloh"))),
+-      t(b(t(1l), null, t(2, "bloh"))),
+-      t(b(t("foo"), null, t(2, "bloh"))),
+-      t(b(t(b(t("bar"))), null, t(2, "bloh"))),
++      t(b(t(1l), t(2, "bloh"))),
++      t(b(t("foo"), t(2, "bloh"))),
++      t(b(t(b(t("bar"))), t(2, "bloh"))),
+       t(b(t(b(t("bar"))), t(1l, m("foo", "bar", "baz", "buz")), t(2, "bloh"))),
+       t(),
+       t(null, null)
+@@ -115,7 +115,7 @@ public class TestSummary {
+     assertEquals(9 * factor, s.getCount());
+     assertEquals(1 * factor, s.getFields().get(0).getNull().longValue());
+     assertEquals(7 * factor, s.getFields().get(0).getBag().getCount());
+-    assertEquals(15 * factor,
++    assertEquals(18 * factor,
+         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(0).getCount());
+     MapSummaryData map =
+         s.getFields().get(0).getBag().getContent().getTuple().getFields().get(1).getMap();
+diff --git a/parquet-thrift/pom.xml b/parquet-thrift/pom.xml
+index 32adcf8..fd33c00 100644
+--- a/parquet-thrift/pom.xml
++++ b/parquet-thrift/pom.xml
+@@ -81,7 +81,7 @@
+     <dependency>
+       <groupId>org.apache.pig</groupId>
+       <artifactId>pig</artifactId>
+-      <version>0.11.1</version>
++      <version>${pig.version}</version>
+       <scope>provided</scope>
+     </dependency>
+     <dependency>
+diff --git a/pom.xml b/pom.xml
+index d024457..d3996d7 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -113,6 +113,7 @@
+     <log4j.version>1.2.17</log4j.version>
+     <previous.version>1.4.0</previous.version>
+     <thrift.executable>thrift</thrift.executable>
++    <pig.version>${cdh.pig.version}</pig.version>
+   </properties>
+ 
+   <modules>
+-- 
+1.7.0.4
+

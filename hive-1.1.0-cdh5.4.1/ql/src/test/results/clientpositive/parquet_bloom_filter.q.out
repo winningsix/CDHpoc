@@ -1,0 +1,118 @@
+PREHOOK: query: CREATE TABLE bfTbl_staging(
+id int, f float, l bigint, s string, d double
+) ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+COLLECTION ITEMS TERMINATED BY ','
+MAP KEYS TERMINATED BY ':'
+NULL DEFINED AS ''
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bfTbl_staging
+POSTHOOK: query: CREATE TABLE bfTbl_staging(
+id int, f float, l bigint, s string, d double
+) ROW FORMAT DELIMITED
+FIELDS TERMINATED BY '|'
+COLLECTION ITEMS TERMINATED BY ','
+MAP KEYS TERMINATED BY ':'
+NULL DEFINED AS ''
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bfTbl_staging
+PREHOOK: query: CREATE TABLE bfTbl(
+id int, f float, l bigint, s string, d double
+) STORED AS PARQUET
+PREHOOK: type: CREATETABLE
+PREHOOK: Output: database:default
+PREHOOK: Output: default@bfTbl
+POSTHOOK: query: CREATE TABLE bfTbl(
+id int, f float, l bigint, s string, d double
+) STORED AS PARQUET
+POSTHOOK: type: CREATETABLE
+POSTHOOK: Output: database:default
+POSTHOOK: Output: default@bfTbl
+PREHOOK: query: LOAD DATA LOCAL INPATH '../../data/files/bf_parquet.txt' OVERWRITE INTO TABLE bfTbl_staging
+PREHOOK: type: LOAD
+#### A masked pattern was here ####
+PREHOOK: Output: default@bftbl_staging
+POSTHOOK: query: LOAD DATA LOCAL INPATH '../../data/files/bf_parquet.txt' OVERWRITE INTO TABLE bfTbl_staging
+POSTHOOK: type: LOAD
+#### A masked pattern was here ####
+POSTHOOK: Output: default@bftbl_staging
+PREHOOK: query: INSERT OVERWRITE TABLE bfTbl SELECT * FROM bfTbl_staging
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl_staging
+PREHOOK: Output: default@bftbl
+POSTHOOK: query: INSERT OVERWRITE TABLE bfTbl SELECT * FROM bfTbl_staging
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl_staging
+POSTHOOK: Output: default@bftbl
+POSTHOOK: Lineage: bftbl.d SIMPLE [(bftbl_staging)bftbl_staging.FieldSchema(name:d, type:double, comment:null), ]
+POSTHOOK: Lineage: bftbl.f SIMPLE [(bftbl_staging)bftbl_staging.FieldSchema(name:f, type:float, comment:null), ]
+POSTHOOK: Lineage: bftbl.id SIMPLE [(bftbl_staging)bftbl_staging.FieldSchema(name:id, type:int, comment:null), ]
+POSTHOOK: Lineage: bftbl.l SIMPLE [(bftbl_staging)bftbl_staging.FieldSchema(name:l, type:bigint, comment:null), ]
+POSTHOOK: Lineage: bftbl.s SIMPLE [(bftbl_staging)bftbl_staging.FieldSchema(name:s, type:string, comment:null), ]
+PREHOOK: query: SELECT * FROM bfTbl WHERE id=39
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE id=39
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+39	0.2301166	9082485254049298703	nop	0.32793266895276985
+PREHOOK: query: SELECT * FROM bfTbl WHERE id=390
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE id=390
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE l=9082485254049298703
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE l=9082485254049298703
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE l=9082485254049298704
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE l=9082485254049298704
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE s="nop"
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE s="nop"
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE s="bbb"
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE s="bbb"
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE d=520505137931974
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE d=520505137931974
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+PREHOOK: query: SELECT * FROM bfTbl WHERE d=520505137931971
+PREHOOK: type: QUERY
+PREHOOK: Input: default@bftbl
+#### A masked pattern was here ####
+POSTHOOK: query: SELECT * FROM bfTbl WHERE d=520505137931971
+POSTHOOK: type: QUERY
+POSTHOOK: Input: default@bftbl
+#### A masked pattern was here ####

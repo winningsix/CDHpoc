@@ -1,0 +1,39 @@
+From 0c532c156ad7ac609c8c0998ae139d6a63a14339 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sun, 27 Jul 2014 15:54:30 -0700
+Subject: [PATCH 07/93] CLOUDERA-BUILD. CDH-16396: Comment out parquet-hive* from parquet pom.
+
+---
+ README.CLOUDERA |    4 ++++
+ pom.xml         |    2 ++
+ 2 files changed, 6 insertions(+), 0 deletions(-)
+ create mode 100644 README.CLOUDERA
+
+diff --git a/README.CLOUDERA b/README.CLOUDERA
+new file mode 100644
+index 0000000..76fdcba
+--- /dev/null
++++ b/README.CLOUDERA
+@@ -0,0 +1,4 @@
++## CDH 5.0 notes
++
++parquet-hive* was removed as Hive in CDH5b2 will include the parquet
++serde as HIVE-5783 has been backported.
+diff --git a/pom.xml b/pom.xml
+index 8c2bc01..e9f860d 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -133,8 +133,10 @@
+     <module>parquet-thrift</module>
+     <module>parquet-test-hadoop2</module>
+     <module>parquet-hadoop-bundle</module>
++    <!-- see README.CLOUDERA
+     <module>parquet-hive</module>
+     <module>parquet-hive-bundle</module>
++    -->
+     <module>parquet-tools</module>
+   </modules>
+ 
+-- 
+1.7.0.4
+

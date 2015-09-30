@@ -1,0 +1,86 @@
+From 8f4be3c045a080491885c36ee74fcd508945bb01 Mon Sep 17 00:00:00 2001
+From: Daniel Weeks <dweeks@netflix.com>
+Date: Wed, 29 Oct 2014 11:10:16 -0700
+Subject: [PATCH 60/93] PARQUET-106: Relax InputSplit Protections
+
+https://issues.apache.org/jira/browse/PARQUET-106
+
+Author: Daniel Weeks <dweeks@netflix.com>
+
+Closes #67 from dcw-netflix/input-split2 and squashes the following commits:
+
+2f2c0c7 [Daniel Weeks] Update ParquetInputSplit.java
+12bd3c1 [Daniel Weeks] Update ParquetInputSplit.java
+6c662ee [Daniel Weeks] Update ParquetInputSplit.java
+5f9f02e [Daniel Weeks] Update ParquetInputSplit.java
+d19e1ac [Daniel Weeks] Merge branch 'master' into input-split2
+c4172bb [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+01a5e8f [Daniel Weeks] Relaxed protections on input split class
+d37a6de [Daniel Weeks] Resetting pom to main
+0c1572e [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+98c6607 [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+96ba602 [Daniel Weeks] Disabled projects that don't compile
+---
+ .../java/parquet/hadoop/ParquetInputSplit.java     |   12 ++++++------
+ 1 files changed, 6 insertions(+), 6 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+index 3e8ebb7..1f195da 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+@@ -141,7 +141,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   /**
+    * @return the requested schema
+    */
+-  String getRequestedSchema() {
++  public String getRequestedSchema() {
+     return requestedSchema;
+   }
+ 
+@@ -157,7 +157,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   /**
+    * @return the end offset of that split
+    */
+-  long getEnd() {
++  public long getEnd() {
+     return end;
+   }
+ 
+@@ -173,14 +173,14 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+   /**
+    * @return app specific metadata provided by the read support in the init phase
+    */
+-  Map<String, String> getReadSupportMetadata() {
++  public Map<String, String> getReadSupportMetadata() {
+     return readSupportMetadata;
+   }
+ 
+   /**
+    * @return the offsets of the row group selected if this has been determined on the client side
+    */
+-  long[] getRowGroupOffsets() {
++  public long[] getRowGroupOffsets() {
+     return rowGroupOffsets;
+   }
+ 
+@@ -210,7 +210,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+    * {@inheritDoc}
+    */
+   @Override
+-  final public void readFields(DataInput hin) throws IOException {
++  public void readFields(DataInput hin) throws IOException {
+     byte[] bytes = readArray(hin);
+     DataInputStream in = new DataInputStream(new GZIPInputStream(new ByteArrayInputStream(bytes)));
+     super.readFields(in);
+@@ -230,7 +230,7 @@ public class ParquetInputSplit extends FileSplit implements Writable {
+    * {@inheritDoc}
+    */
+   @Override
+-  final public void write(DataOutput hout) throws IOException {
++  public void write(DataOutput hout) throws IOException {
+     ByteArrayOutputStream baos = new ByteArrayOutputStream();
+     DataOutputStream out = new DataOutputStream(new GZIPOutputStream(baos));
+     super.write(out);
+-- 
+1.7.0.4
+

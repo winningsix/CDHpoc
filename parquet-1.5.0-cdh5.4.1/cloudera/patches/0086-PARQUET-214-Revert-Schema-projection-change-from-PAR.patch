@@ -1,0 +1,34 @@
+From 266cb74afc31aa408a8ccd5a9ff701b70f587784 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Mon, 9 Mar 2015 16:18:53 -0700
+Subject: [PATCH 86/93] PARQUET-214: Revert Schema projection change from PARQUET-139.
+
+At some point, parquet-avro converted string fields to binary without
+the UTF8 annotation. The change in PARQUET-139 to filter the file's
+schema using the requested projection causes a regression because the
+annotation is not present in some file schemas, but is present in the
+projection schema converted from Avro.
+
+This reverts the projection change to avoid a regression in a release.
+Fixing the projection as in PARQUET-139 will need to be done as a
+follow-up.
+---
+ .../main/java/parquet/avro/AvroReadSupport.java    |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java b/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
+index eacd369..2756ac6 100644
+--- a/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
++++ b/parquet-avro/src/main/java/parquet/avro/AvroReadSupport.java
+@@ -81,7 +81,7 @@ public class AvroReadSupport<T extends IndexedRecord> extends ReadSupport<T> {
+     }
+     // use getSchemaForRead because it checks that the requested schema is a
+     // subset of the columns in the file schema
+-    return new ReadContext(getSchemaForRead(fileSchema, projection), metadata);
++    return new ReadContext(projection, metadata);
+   }
+ 
+   @Override
+-- 
+1.7.0.4
+

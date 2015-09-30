@@ -1,0 +1,39 @@
+From 369cdcdefbb6bbfc9a1276e7bd01357059684336 Mon Sep 17 00:00:00 2001
+From: choplin <choplin.choplin@gmail.com>
+Date: Thu, 26 Feb 2015 13:40:02 -0800
+Subject: [PATCH 77/93] PARQUET-190: fix an inconsistent Javadoc comment of ReadSupport.prepareForRead
+
+ReadSupport.prepareForRead does not return RecordConsumer but RecordMaterializer
+
+Author: choplin <choplin.choplin@gmail.com>
+
+Closes #125 from choplin/fix-javadoc-comment and squashes the following commits:
+
+c3574f3 [choplin] fix an inconsistent Javadoc comment of ReadSupport.prepareForRead
+---
+ .../main/java/parquet/hadoop/api/ReadSupport.java  |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/api/ReadSupport.java b/parquet-hadoop/src/main/java/parquet/hadoop/api/ReadSupport.java
+index 433ac9a..7ad192d 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/api/ReadSupport.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/api/ReadSupport.java
+@@ -89,13 +89,13 @@ abstract public class ReadSupport<T> {
+ 
+   /**
+    * called in {@link org.apache.hadoop.mapreduce.RecordReader#initialize(org.apache.hadoop.mapreduce.InputSplit, org.apache.hadoop.mapreduce.TaskAttemptContext)} in the back end
+-   * the returned RecordConsumer will materialize the records and add them to the destination
++   * the returned RecordMaterializer will materialize the records and add them to the destination
+    *
+    * @param configuration    the job configuration
+    * @param keyValueMetaData the app specific metadata from the file
+    * @param fileSchema       the schema of the file
+    * @param readContext      returned by the init method
+-   * @return the recordConsumer that will receive the events
++   * @return the recordMaterializer that will materialize the records
+    */
+   abstract public RecordMaterializer<T> prepareForRead(
+           Configuration configuration,
+-- 
+1.7.0.4
+

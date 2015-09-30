@@ -1,0 +1,1693 @@
+commit dc00b955e80e2987b22f13206e010f618280f336
+Author: Jenkins <dev-kitchen@cloudera.com>
+Date:   Mon May 4 09:26:18 2015 -0700
+
+    Branch for CDH5.4.1
+
+commit 25319f0ac60aaae6b8b5f4759678bf6ba663ad3c
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Fri Mar 13 12:54:58 2015 -0700
+
+    PARQUET-217 Use simpler heuristic in MemoryManager
+    
+    We found that the heuristic of throwing when:
+    ```
+    minMemoryAllocation > 0 && newSize/maxColCount < minMemoryAllocation
+    ```
+    in MemoryManager is not really valid when you have many (3k +) columns, due to the division by the number of columns.
+    This check throws immediately when writing a single file with a 3GB heap and > 3K columns.
+    
+    This PR introduces a simpler heuristic, which is a min scale, and we throw when the MemoryManager's scale gets too small. By default I chose 25%, but I'm happy to change that to something else.
+    
+    For backwards compatibility I've left the original check in, but it's not executed by default anymore, to get this behavior the min chunk size will have to be set in the hadoop configuration. I'm also open to removing it entirely if we don't think we need it anymore.
+    
+    What do you think?
+    @danielcweeks @rdblue @dongche @julienledem
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    
+    Closes #143 from isnotinvain/alexlevenson/mem-manager-heuristic and squashes the following commits:
+    
+    acda66f [Alex Levenson] Add units to exception
+    10237c6 [Alex Levenson] Decouple DEFAULT_MIN_MEMORY_ALLOCATION from DEFAULT_PAGE_SIZE
+    29c9881 [Alex Levenson] Use an absolute minimum on rowgroup size, only apply when scale < 1
+    8877125 [Alex Levenson] Merge branch 'master' into alexlevenson/mem-manager-heuristic
+    e5117a0 [Alex Levenson] Merge branch 'master' into alexlevenson/mem-manager-heuristic
+    6ee5f46 [Alex Levenson] Use simpler heuristic in MemoryManager
+
+commit 85436effbb914e206b9c9b4239af39b43e3762d3
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Mon Mar 16 10:46:01 2015 -0700
+
+    Preparing for CDH5.4.1
+
+commit 8b65c408384b04ce111141e519d3ec41506aefc3
+Author: Ryan Blue <blue@apache.org>
+Date:   Tue Mar 10 12:07:02 2015 -0700
+
+    PARQUET-212: Thrift: Update reads with nested type compatibility rules.
+    
+    This includes:
+    * Read non-thrift files if a thrift class is supplied.
+    * Update thrift reads for LIST compatibility rules.
+    * Add property to ignore nulls in lists.
+    * Fix list handling with projection.
+    
+    Conflicts:
+    	parquet-thrift/src/main/java/parquet/thrift/ThriftSchemaConverter.java
+    Resolution:
+        Conflict in imports only; cleaned up imports.
+
+commit ee5fa2b86a09ec22e1cade8cd82b79db7591963e
+Author: Ryan Blue <blue@apache.org>
+Date:   Tue Mar 10 12:04:07 2015 -0700
+
+    PARQUET-212: Add DirectWriterTest base class.
+    
+    This adds convenience methods for writing to files using the
+    RecordConsumer API directly. This is useful for mimicing files from
+    other writers for compatibility tests.
+    
+    Conflicts:
+    	parquet-thrift/pom.xml
+    Resolution:
+        Conflict between two added dependencies in the same place. Both
+        are required and in the final version.
+
+commit 5ad4b3fb2ba259d2f6ebe1db0d1e5a9934139d95
+Author: Ryan Blue <blue@apache.org>
+Date:   Mon Mar 9 12:59:45 2015 -0700
+
+    PARQUET-111: Update headers in parquet-tools, remove NOTICE.
+    
+    This commit update the copyright headers in parquet-tools from ARRIS to the standard Apache license header. This needs ARRIS or @wesleypeck to "provide written permission for the ASF to make such removal or relocation of the notices". Please +1 this commit, or submit a PR with similar changes. Thanks!
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #114 from rdblue/PARQUET-111-parquet-tools-changes and squashes the following commits:
+    
+    87eb75f [Ryan Blue] PARQUET-111: Update headers in parquet-tools, remove NOTICE.
+
+commit 2d14b857515224fea5de5052acd09601f6172444
+Author: Ryan Blue <blue@apache.org>
+Date:   Tue Mar 10 11:42:42 2015 -0700
+
+    PARQUET-214: Add support for old avro.schema property.
+    
+    This also adds a test with an old test file created by parquet-avro.
+
+commit 266cb74afc31aa408a8ccd5a9ff701b70f587784
+Author: Ryan Blue <blue@apache.org>
+Date:   Mon Mar 9 16:18:53 2015 -0700
+
+    PARQUET-214: Revert Schema projection change from PARQUET-139.
+    
+    At some point, parquet-avro converted string fields to binary without
+    the UTF8 annotation. The change in PARQUET-139 to filter the file's
+    schema using the requested projection causes a regression because the
+    annotation is not present in some file schemas, but is present in the
+    projection schema converted from Avro.
+    
+    This reverts the projection change to avoid a regression in a release.
+    Fixing the projection as in PARQUET-139 will need to be done as a
+    follow-up.
+
+commit c4602f14189e8eb69f5e31e531bc706bff673746
+Author: Ryan Blue <blue@apache.org>
+Date:   Fri Mar 6 17:06:34 2015 -0800
+
+    PARQUET-193: Implement nested types compatibility rules in Avro
+    
+    This depends on PARQUET-191 and PARQUET-192.
+    
+    This replaces #83.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #128 from rdblue/PARQUET-193-implement-compatilibity-avro and squashes the following commits:
+    
+    bd0491e [Ryan Blue] PARQUET-193: Implement nested types rules in Avro.
+
+commit 4a4e24ca896b391698983fe091201e3b3124fd2c
+Author: Mariappan Asokan <masokan@gmail.com>
+Date:   Wed Mar 4 18:24:21 2015 -0800
+
+    PARQUET-134 patch - Support file write mode
+    
+    Julien,
+       I changed the integer constants to enum as you requested.  Please review the patch.
+    
+    Thanks.
+    
+    Author: Mariappan Asokan <masokan@gmail.com>
+    
+    Closes #111 from masokan/master and squashes the following commits:
+    
+    7a8aa6f [Mariappan Asokan] PARQUET-134 patch - Support file write mode
+
+commit 9f3cd37b7914634823e6c798cbaa270dbe30cd6d
+Author: Ryan Blue <blue@apache.org>
+Date:   Wed Mar 4 17:56:52 2015 -0800
+
+    PARQUET-186: Fix Precondition performance problem in SnappyUtil.
+    
+    This fixes the problem by adding string formatting to the preconditions. This avoids any string formatting unless the precondition throws an Exception. We should check for string operations in other tight loops as well.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #133 from rdblue/PARQUET-186-precondition-format-string and squashes the following commits:
+    
+    be0b8fe [Ryan Blue] PARQUET-186: Fix Precondition performance bug in SnappyUtil.
+    67f9bf2 [Ryan Blue] PARQUET-186: Add format string and args to Preconditions.
+
+commit c47b973bc4b07e54934468a180aac84a9154d6d6
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Wed Mar 4 17:26:44 2015 -0800
+
+    PARQUET-160: avoid wasting 64K per empty buffer.
+    
+    This buffer initializes itself to a default size when instantiated.
+    This leads to a lot of unused small buffers when there are a lot of empty columns.
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    Author: julien <julien@twitter.com>
+    Author: Julien Le Dem <julien@twitter.com>
+    
+    Closes #98 from julienledem/avoid_wasting_64K_per_empty_buffer and squashes the following commits:
+    
+    b0200dd [julien] add license
+    a1b278e [julien] Merge branch 'master' into avoid_wasting_64K_per_empty_buffer
+    5304ee1 [julien] remove unused constant
+    81e399f [julien] Merge branch 'avoid_wasting_64K_per_empty_buffer' of github.com:julienledem/incubator-parquet-mr into avoid_wasting_64K_per_empty_buffer
+    ccf677d [julien] Merge branch 'master' into avoid_wasting_64K_per_empty_buffer
+    37148d6 [Julien Le Dem] Merge pull request #2 from isnotinvain/PR-98
+    b9abab0 [Alex Levenson] Address Julien's comment
+    965af7f [Alex Levenson] one more typo
+    9939d8d [Alex Levenson] fix typos in comments
+    61c0100 [Alex Levenson] Make initial slab size heuristic into a helper method, apply in DictionaryValuesWriter as well
+    a257ee4 [Alex Levenson] Improve IndexOutOfBoundsException message
+    64d6c7f [Alex Levenson] update comments
+    8b54667 [Alex Levenson] Don't use CapacityByteArrayOutputStream for writing page chunks
+    6a20e8b [Alex Levenson] Remove initialSlabSize decision from InternalParquetRecordReader, use a simpler heuristic in the column writers instead
+    3a0f8e4 [Alex Levenson] Use simpler settings for column chunk writer
+    b2736a1 [Alex Levenson] Some cleanup in CapacityByteArrayOutputStream
+    1df4a71 [julien] refactor CapacityByteArray to be aware of page size
+    95c8fb6 [julien] avoid wasting 64K per empty buffer.
+
+commit 06d8bb6e31e0f7267d41c335ca9bea22bb2175ef
+Author: Colin Marc <colinmarc@gmail.com>
+Date:   Wed Mar 4 12:49:50 2015 -0800
+
+    PARQUET-187: Replace JavaConversions.asJavaList with JavaConversions.seqAsJavaList
+    
+    The former was removed in 2.11, but the latter exists in 2.9, 2.10 and 2.11. With this change, I can build on 2.11 without any issue.
+    
+    Author: Colin Marc <colinmarc@gmail.com>
+    
+    Closes #121 from colinmarc/build-211 and squashes the following commits:
+    
+    8a29319 [Colin Marc] Replace JavaConversions.asJavaList with JavaConversions.seqAsJavaList.
+
+commit 7a59470536e740b13fb60c9d8792dab88887f299
+Author: Ryan Blue <blue@apache.org>
+Date:   Wed Mar 4 12:35:40 2015 -0800
+
+    PARQUET-188: Change column ordering to match the field order.
+    
+    This was the behavior before the V2 pages were added.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #129 from rdblue/PARQUET-188-fix-column-metadata-order and squashes the following commits:
+    
+    3c9fa5d [Ryan Blue] PARQUET-188: Change column ordering to match the field order.
+
+commit b7a7bb16c9a6697eba82f46cb97f9b2544238d60
+Author: Ryan Blue <blue@apache.org>
+Date:   Wed Mar 4 12:26:52 2015 -0800
+
+    PARQUET-192: Fix map null encoding
+    
+    This depends on PARQUET-191 for the correct schema representation.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #127 from rdblue/PARQUET-192-fix-map-null-encoding and squashes the following commits:
+    
+    fffde82 [Ryan Blue] PARQUET-192: Fix parquet-avro maps with null values.
+
+commit e94ef61c1c444c0a1c5b58a4a9b595ac79715564
+Author: Ryan Blue <blue@apache.org>
+Date:   Wed Mar 4 12:11:50 2015 -0800
+
+    PARQUET-191: Fix map Type to Avro Schema conversion.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #126 from rdblue/PARQUET-191-fix-map-value-conversion and squashes the following commits:
+    
+    33f6bbc [Ryan Blue] PARQUET-191: Fix map Type to Avro Schema conversion.
+
+commit 369cdcdefbb6bbfc9a1276e7bd01357059684336
+Author: choplin <choplin.choplin@gmail.com>
+Date:   Thu Feb 26 13:40:02 2015 -0800
+
+    PARQUET-190: fix an inconsistent Javadoc comment of ReadSupport.prepareForRead
+    
+    ReadSupport.prepareForRead does not return RecordConsumer but RecordMaterializer
+    
+    Author: choplin <choplin.choplin@gmail.com>
+    
+    Closes #125 from choplin/fix-javadoc-comment and squashes the following commits:
+    
+    c3574f3 [choplin] fix an inconsistent Javadoc comment of ReadSupport.prepareForRead
+
+commit ebaa2f0b651797fa0cc03357aff925991d42b5ce
+Author: Ryan Blue <blue@apache.org>
+Date:   Mon Feb 9 23:07:35 2015 -0800
+
+    PARQUET-164: Add warning when scaling row group sizes.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #119 from rdblue/PARQUET-164-add-memory-manager-warning and squashes the following commits:
+    
+    241144f [Ryan Blue] PARQUET-164: Add warning when scaling row group sizes.
+
+commit 82f993edf4925332a7dd323b5ccfeff9e66b98af
+Author: Yash Datta <Yash.Datta@guavus.com>
+Date:   Mon Feb 9 17:51:46 2015 -0800
+
+    PARQUET-116: Pass a filter object to user defined predicate in filter2 api
+    
+    Currently for creating a user defined predicate using the new filter api, no value can be passed to create a dynamic filter at runtime. This reduces the usefulness of the user defined predicate, and meaningful predicates cannot be created. We can add a generic Object value that is passed through the api, which can internally be used in the keep function of the user defined predicate for creating many different types of filters.
+    For example, in spark sql, we can pass in a list of filter values for a where IN clause query and filter the row values based on that list.
+    
+    Author: Yash Datta <Yash.Datta@guavus.com>
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    Author: Yash Datta <saucam@gmail.com>
+    
+    Closes #73 from saucam/master and squashes the following commits:
+    
+    7231a3b [Yash Datta] Merge pull request #3 from isnotinvain/alexlevenson/fix-binary-compat
+    dcc276b [Alex Levenson] Ignore binary incompatibility in private filter2 class
+    7bfa5ad [Yash Datta] Merge pull request #2 from isnotinvain/alexlevenson/simplify-udp-state
+    0187376 [Alex Levenson] Resolve merge conflicts
+    25aa716 [Alex Levenson] Simplify user defined predicates with state
+    51952f8 [Yash Datta] PARQUET-116: Fix whitespace
+    d7b7159 [Yash Datta] PARQUET-116: Make UserDefined abstract, add two subclasses, one accepting udp class, other accepting serializable udp instance
+    40d394a [Yash Datta] PARQUET-116: Fix whitespace
+    9a63611 [Yash Datta] PARQUET-116: Fix whitespace
+    7caa4dc [Yash Datta] PARQUET-116: Add ConfiguredUserDefined that takes a serialiazble udp directly
+    0eaabf4 [Yash Datta] PARQUET-116: Move the config object from keep method to a configure method in udp predicate
+    f51a431 [Yash Datta] PARQUET-116: Adding type safety for the filter object to be passed to user defined predicate
+    d5a2b9e [Yash Datta] PARQUET-116: Enforce that the filter object to be passed must be Serializable
+    dfd0478 [Yash Datta] PARQUET-116: Add a test case for passing a filter object to user defined predicate
+    4ab46ec [Yash Datta] PARQUET-116: Pass a filter object to user defined predicate in filter2 api
+
+commit 7970b87bfa65d6771d8a0ea9f65d7f6c77f1be26
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Thu Feb 5 14:36:28 2015 -0800
+
+    PARQUET-177: Added lower bound to memory manager resize
+    
+    PARQUET-177
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #115 from danielcweeks/memory-manager-limit and squashes the following commits:
+    
+    b2e4708 [Daniel Weeks] Updated to base memory allocation off estimated chunk size
+    09d7aa3 [Daniel Weeks] Updated property name and default value
+    8f6cff1 [Daniel Weeks] Added low bound to memory manager resize
+    
+    Conflicts:
+    	parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+    Resolution:
+        Conflict due to newline change at the end of the file.
+
+commit 72e1ab916b66942c4d6fcce95dfbdfcb45abd7ff
+Author: Ryan Blue <blue@apache.org>
+Date:   Fri Mar 6 16:26:20 2015 -0800
+
+    CLOUDERA-BUILD. Remove RAT check.
+
+commit 4c06e0d84d9d84b5c6bd1c1b4b5c311481001c40
+Author: Ryan Blue <blue@apache.org>
+Date:   Mon Feb 2 16:43:01 2015 -0800
+
+    PARQUET-111: Updates for apache release
+    
+    Updates for first Apache release of parquet-mr.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #109 from rdblue/PARQUET-111-update-for-apache-release and squashes the following commits:
+    
+    bf19849 [Ryan Blue] PARQUET-111: Add ARRIS copyright header to parquet-tools.
+    f1a5c28 [Ryan Blue] PARQUET-111: Update headers in parquet-protobuf.
+    ee4ea88 [Ryan Blue] PARQUET-111: Remove leaked LICENSE and NOTICE files.
+    5bf178b [Ryan Blue] PARQUET-111: Update module names, urls, and binary LICENSE files.
+    6736320 [Ryan Blue] PARQUET-111: Add RAT exclusion for auto-generated POM files.
+    7db4553 [Ryan Blue] PARQUET-111: Add attribution for Spark dev script to LICENSE.
+    45e29f2 [Ryan Blue] PARQUET-111: Update LICENSE and NOTICE.
+    516c058 [Ryan Blue] PARQUET-111: Update license headers to pass RAT check.
+    da688e3 [Ryan Blue] PARQUET-111: Update NOTICE with Apache boilerplate.
+    234715d [Ryan Blue] PARQUET-111: Add DISCLAIMER and KEYS.
+    f1d3601 [Ryan Blue] PARQUET-111: Update to use Apache parent POM.
+
+commit 0cd0b822e64f19fb912f55e84113379a6f22bd3d
+Author: dongche1 <dong1.chen@intel.com>
+Date:   Mon Dec 29 09:17:34 2014 -0600
+
+    PARQUET-108: Parquet Memory Management in Java
+    
+    PARQUET-108: Parquet Memory Management in Java.
+    When Parquet tries to write very large "row groups", it may causes tasks to run out of memory during dynamic partitions when a reducer may have many Parquet files open at a given time.
+    
+    This patch implements a memory manager to control the total memory size used by writers and balance their memory usage, which ensures that we don't run out of memory due to writing too many row groups within a single JVM.
+    
+    Author: dongche1 <dong1.chen@intel.com>
+    
+    Closes #80 from dongche/master and squashes the following commits:
+    
+    e511f85 [dongche1] Merge remote branch 'upstream/master'
+    60a96b5 [dongche1] Merge remote branch 'upstream/master'
+    2d17212 [dongche1] improve MemoryManger instantiation, change access level
+    6e9333e [dongche1] change blocksize type from int to long
+    e07b16e [dongche1] Refine updateAllocation(), addWriter(). Remove redundant getMemoryPoolRatio
+    9a0a831 [dongche1] log the inconsistent ratio config instead of thowing an exception
+    3a35d22 [dongche1] Move the creation of MemoryManager. Throw exception instead of logging it
+    aeda7bc [dongche1] PARQUET-108: Parquet Memory Management in Java" ;
+    c883bba [dongche1] PARQUET-108: Parquet Memory Management in Java
+    7b45b2c [dongche1] PARQUET-108: Parquet Memory Management in Java
+    6d766aa [dongche1] PARQUET-108: Parquet Memory Management in Java --- address some comments
+    3abfe2b [dongche1] parquet 108
+    
+    Conflicts:
+    	parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetOutputFormat.java
+    Resolution:
+        OutputFormat conflict due to whitespace.
+        RecordReader conflict due to ending newline.
+        InputSplit conflict caused by out-of-order changes, added projected
+        schema to the call to end. This value is not used, see PARQUET-207.
+
+commit 6a0cd4cd2cdc93bef1e0f46a47b8c8dd24b81c5e
+Author: asingh <asingh@cloudera.com>
+Date:   Mon Feb 23 11:25:58 2015 -0800
+
+    CDH-25325: Parquet - Build all C5 components with -source/-target 1.7
+
+commit 59f138b03b9da6afbacbdcac8283a1763b2b255d
+Author: Ryan Blue <blue@apache.org>
+Date:   Thu Feb 5 15:06:12 2015 -0800
+
+    PARQUET-139: Avoid reading footers when using task-side metadata
+    
+    This updates the InternalParquetRecordReader to initialize the ReadContext in each task rather than once for an entire job. There are two reasons for this change:
+    
+    1. For correctness, the requested projection schema must be validated against each file schema, not once using the merged schema.
+    2. To avoid reading file footers on the client side, which is a performance bottleneck.
+    
+    Because the read context is reinitialized in every task, it is no longer necessary to pass the its contents to each task in ParquetInputSplit. The fields and accessors have been removed.
+    
+    This also adds a new InputFormat, ParquetFileInputFormat that uses FileSplits instead of ParquetSplits. It goes through the normal ParquetRecordReader and creates a ParquetSplit on the task side. This is to avoid accidental behavior changes in ParquetInputFormat.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #91 from rdblue/PARQUET-139-input-format-task-side and squashes the following commits:
+    
+    cb30660 [Ryan Blue] PARQUET-139: Fix deprecated reader bug from review fixes.
+    09cde8d [Ryan Blue] PARQUET-139: Implement changes from reviews.
+    3eec553 [Ryan Blue] PARQUET-139: Merge new InputFormat into ParquetInputFormat.
+    8971b80 [Ryan Blue] PARQUET-139: Add ParquetFileInputFormat that uses FileSplit.
+    87dfe86 [Ryan Blue] PARQUET-139: Expose read support helper methods.
+    057c7dc [Ryan Blue] PARQUET-139: Update reader to initialize read context in tasks.
+    
+    Conflicts:
+    	parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputSplit.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetRecordReader.java
+    	parquet-hadoop/src/test/java/parquet/hadoop/TestInputFormat.java
+    Resolutions:
+        ParquetInputFormat conflict from unbackported strict type checking
+        ParquetInputSplit conflict from methods added back for compatibility
+        Other conflicts were minor
+
+commit 17d51bfca88edabbcf106d2997e65766d8220816
+Author: Cheng Lian <lian@databricks.com>
+Date:   Tue Feb 3 12:53:37 2015 -0800
+
+    PARQUET-173: Fixes `StatisticsFilter` for `And` filter predicate
+    
+    <!-- Reviewable:start -->
+    [<img src="https://reviewable.io/review_button.png" height=40 alt="Review on Reviewable"/>](https://reviewable.io/reviews/apache/incubator-parquet-mr/108)
+    <!-- Reviewable:end -->
+    
+    Author: Cheng Lian <lian@databricks.com>
+    
+    Closes #108 from liancheng/PARQUET-173 and squashes the following commits:
+    
+    d188f0b [Cheng Lian] Fixes test case
+    be2c8a1 [Cheng Lian] Fixes `StatisticsFilter` for `And` filter predicate
+
+commit 0d78fec17225f9a193a7e4e7b1366181bf7aaa7e
+Author: Jim Carroll <jim@dontcallme.com>
+Date:   Thu Jan 29 17:32:54 2015 -0800
+
+    PARQUET-157: Divide by zero fix
+    
+    There is a divide by zero error in logging code inside the InternalParquetRecordReader. I've been running with this fixed for a while but everytime I revert I hit the problem again. I can't believe anyone else hasn't had this problem. I submitted a Jira ticket a few weeks ago but didn't hear anything on the list so here's the fix.
+    
+    This also avoids compiling log statements in some cases where it's unnecessary inside the checkRead method of InternalParquetRecordReader.
+    
+    Also added a .gitignore entry to clean up a build artifact.
+    
+    Author: Jim Carroll <jim@dontcallme.com>
+    
+    Closes #102 from jimfcarroll/divide-by-zero-fix and squashes the following commits:
+    
+    423200c [Jim Carroll] Filter out parquet-scrooge build artifact from git.
+    22337f3 [Jim Carroll] PARQUET-157: Fix a divide by zero error when Parquet runs quickly. Also avoid compiling log statements in some cases where it's unnecessary.
+
+commit 1b72897d7dfd791c2ce89946b6cfd1b896e36517
+Author: Neville Li <neville@spotify.com>
+Date:   Thu Jan 29 17:31:04 2015 -0800
+
+    PARQUET-142: add path filter in ParquetReader
+    
+    Currently parquet-tools command fails when input is a directory with _SUCCESS file from mapreduce. Filtering those out like ParquetFileReader does fixes the problem.
+    
+    ```
+    parquet-cat /tmp/parquet_write_test
+    Could not read footer: java.lang.RuntimeException: file:/tmp/parquet_write_test/_SUCCESS is not a Parquet file (too small)
+    
+    $ tree /tmp/parquet_write_test
+    /tmp/parquet_write_test
+    ├── part-m-00000.parquet
+    └── _SUCCESS
+    ```
+    
+    Author: Neville Li <neville@spotify.com>
+    
+    Closes #89 from nevillelyh/gh/path-filter and squashes the following commits:
+    
+    7377a20 [Neville Li] PARQUET-142: add path filter in ParquetReader
+
+commit 091f50bcfe8d2635c058f10246e048b97d0e4f1c
+Author: Chris Albright <calbright@cj.com>
+Date:   Thu Jan 29 17:29:06 2015 -0800
+
+    PARQUET-124: normalize path checking to prevent mismatch between URI and ...
+    
+    ...path
+    
+    Author: Chris Albright <calbright@cj.com>
+    
+    Closes #79 from chrisalbright/master and squashes the following commits:
+    
+    b1b0086 [Chris Albright] Merge remote-tracking branch 'upstream/master'
+    9669427 [Chris Albright] PARQUET-124: Adding test (Thanks Ryan Blue) that proves mergeFooters was failing
+    8e342ed [Chris Albright] PARQUET-124: normalize path checking to prevent mismatch between URI and path
+
+commit edcc88e1984a1e40437ff0f3a0571a141eb0b2c6
+Author: Yash Datta <Yash.Datta@guavus.com>
+Date:   Mon Jan 26 18:21:11 2015 -0800
+
+    PARQUET-136: NPE thrown in StatisticsFilter when all values in a string/binary column trunk are null
+    
+    In case of all nulls in a binary column, statistics object read from file metadata is empty, and should return true for all nulls check for the column. Even if column has no values, it can be ignored.
+    
+    The other way is to fix this behaviour in the writer, but is that what we want ?
+    
+    Author: Yash Datta <Yash.Datta@guavus.com>
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    Author: Yash Datta <saucam@gmail.com>
+    
+    Closes #99 from saucam/npe and squashes the following commits:
+    
+    5138e44 [Yash Datta] PARQUET-136: Remove unreachable block
+    b17cd38 [Yash Datta] Revert "PARQUET-161: Trigger tests"
+    82209e6 [Yash Datta] PARQUET-161: Trigger tests
+    aab2f81 [Yash Datta] PARQUET-161: Review comments for the test case
+    2217ee2 [Yash Datta] PARQUET-161: Add a test case for checking the correct statistics info is recorded in case of all nulls in a column
+    c2f8d6f [Yash Datta] PARQUET-161: Fix the write path to write statistics object in case of only nulls in the column
+    97bb517 [Yash Datta] Revert "revert TestStatisticsFilter.java"
+    a06f0d0 [Yash Datta] Merge pull request #1 from isnotinvain/alexlevenson/PARQUET-161-136
+    b1001eb [Alex Levenson] Fix statistics isEmpty, handle more edge cases in statistics filter
+    0c88be0 [Alex Levenson] revert TestStatisticsFilter.java
+    1ac9192 [Yash Datta] PARQUET-136: Its better to not filter chunks for which empty statistics object is returned. Empty statistics can be read in case of 1. pre-statistics files, 2. files written from current writer that has a bug, as it does not write the statistics if column has all nulls
+    e5e924e [Yash Datta] Revert "PARQUET-136: In case of all nulls in a binary column, statistics object read from file metadata is empty, and should return true for all nulls check for the column"
+    8cc5106 [Yash Datta] Revert "PARQUET-136: fix hasNulls to cater to the case where all values are nulls"
+    c7c126f [Yash Datta] PARQUET-136: fix hasNulls to cater to the case where all values are nulls
+    974a22b [Yash Datta] PARQUET-136: In case of all nulls in a binary column, statistics object read from file metadata is empty, and should return true for all nulls check for the column
+
+commit 29a48e8f0a2fb7ef935f36a876fadb9ce5e0984a
+Author: Cheng Lian <lian@databricks.com>
+Date:   Fri Jan 23 16:20:10 2015 -0800
+
+    PARQUET-168: Fixes parquet-tools command line option description
+    
+    <!-- Reviewable:start -->
+    [<img src="https://reviewable.io/review_button.png" height=40 alt="Review on Reviewable"/>](https://reviewable.io/reviews/apache/incubator-parquet-mr/106)
+    <!-- Reviewable:end -->
+    
+    Author: Cheng Lian <lian@databricks.com>
+    
+    Closes #106 from liancheng/PARQUET-168 and squashes the following commits:
+    
+    4524f2d [Cheng Lian] Fixes command line option description
+
+commit 3510d1888daa8cd5227f806025f7ea49648724fa
+Author: julien <julien@twitter.com>
+Date:   Thu Dec 4 13:16:11 2014 -0800
+
+    PARQUET-117: implement the new page format for Parquet 2.0
+    
+    The new page format was defined some time ago:
+    https://github.com/Parquet/parquet-format/pull/64
+    https://github.com/Parquet/parquet-format/issues/44
+    The goals are the following:
+     - cut pages on record boundaries to facilitate skipping pages in predicate poush down
+     - read rl and dl independently of data
+     - optionally not compress data
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #75 from julienledem/new_page_format and squashes the following commits:
+    
+    fbbc23a [julien] make mvn install display output only if it fails
+    4189383 [julien] save output lines as travis cuts after 10000
+    44d3684 [julien] fix parquet-tools for new page format
+    0fb8c15 [julien] Merge branch 'master' into new_page_format
+    5880cbb [julien] Merge branch 'master' into new_page_format
+    6ee7303 [julien] make parquet.column package not semver compliant
+    42f6c9f [julien] add tests and fix bugs
+    266302b [julien] fix write path
+    4e76369 [julien] read path
+    050a487 [julien] fix compilation
+    e0e9d00 [julien] better ColumnWriterStore definition
+    ecf04ce [julien] remove unnecessary change
+    2bc4d01 [julien] first stab at write path for the new page format
+    
+    Conflicts:
+    	.travis.yml
+    	pom.xml
+    Resolution:
+        Both minor conflicts in content not used for CDH
+
+commit 86b246ca5eae2ac18a9726b4dc3a008fa7a1a733
+Author: julien <julien@twitter.com>
+Date:   Fri Nov 7 11:02:27 2014 -0800
+
+    PARQUET-122: make task side metadata true by default
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #78 from julienledem/task_side_metadata_default_true and squashes the following commits:
+    
+    32451a7 [julien] make task side metadata true by default
+
+commit 8f4be3c045a080491885c36ee74fcd508945bb01
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Wed Oct 29 11:10:16 2014 -0700
+
+    PARQUET-106: Relax InputSplit Protections
+    
+    https://issues.apache.org/jira/browse/PARQUET-106
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #67 from dcw-netflix/input-split2 and squashes the following commits:
+    
+    2f2c0c7 [Daniel Weeks] Update ParquetInputSplit.java
+    12bd3c1 [Daniel Weeks] Update ParquetInputSplit.java
+    6c662ee [Daniel Weeks] Update ParquetInputSplit.java
+    5f9f02e [Daniel Weeks] Update ParquetInputSplit.java
+    d19e1ac [Daniel Weeks] Merge branch 'master' into input-split2
+    c4172bb [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+    01a5e8f [Daniel Weeks] Relaxed protections on input split class
+    d37a6de [Daniel Weeks] Resetting pom to main
+    0c1572e [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+    98c6607 [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+    96ba602 [Daniel Weeks] Disabled projects that don't compile
+
+commit 0ba576de25f7e20e8758bbc71b2e1529ba7aae1b
+Author: julien <julien@twitter.com>
+Date:   Thu Sep 25 10:12:58 2014 -0700
+
+    PARQUET-101: fix meta data lookup when not using task.side.metadata
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #64 from julienledem/PARQUET-101 and squashes the following commits:
+    
+    54ffbc9 [julien] fix meta data lookup when not using task.side.metadata
+
+commit c89be03bbe08f970d7687ec4a252324347156bf9
+Author: Ryan Blue <blue@apache.org>
+Date:   Thu Feb 5 16:51:20 2015 -0800
+
+    CLOUDERA-BUILD. Add ParquetInputSplit methods removed in 5dafd12.
+    
+    These methods are no longer used internally, but should be present for
+    compatibility. They were removed upstream because the data is no longer
+    present: blocks are now offsets, no file schema or file metadata is
+    passed in. The deprecated implementations have reasonable defaults to
+    avoid problems, but this is a behavior change.
+    
+    This adds back:
+    * List<BlockMetaData> getBlocks() - returns an empty list
+    * String getFileSchema() - returns null
+    * Map<String, String> getExtraMetadata() - returns an empty map
+    
+    The remaining incompatible changes are fixed in ccfca8f.
+
+commit 69d10954a0e544dcaae5bd6228cbdf842d5667ad
+Author: julien <julien@twitter.com>
+Date:   Fri Sep 5 11:32:46 2014 -0700
+
+    PARQUET-84: Avoid reading rowgroup metadata in memory on the client side.
+    
+    This will improve reading big datasets with a large schema (thousands of columns)
+    Instead rowgroup metadata can be read in the tasks where each tasks reads only the metadata of the file it's reading
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #45 from julienledem/skip_reading_row_groups and squashes the following commits:
+    
+    ccdd08c [julien] fix parquet-hive
+    24a2050 [julien] Merge branch 'master' into skip_reading_row_groups
+    3d7e35a [julien] adress review feedback
+    5b6bd1b [julien] more tests
+    323d254 [julien] sdd unit tests
+    f599259 [julien] review feedback
+    fb11f02 [julien] fix backward compatibility check
+    2c20b46 [julien] cleanup readFooters methods
+    3da37d8 [julien] fix read summary
+    ab95a45 [julien] cleanup
+    4d16df3 [julien] implement task side metadata
+    9bb8059 [julien] first stab at integrating skipping row groups
+    
+    Conflicts:
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileWriter.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/ParquetInputFormat.java
+    	parquet-hadoop/src/test/java/parquet/hadoop/example/TestInputOutputFormat.java
+    Resolution:
+        Conflicts were from whitespace changes and strict type checking (not
+        backported). Removed dependence on strict type checking.
+
+commit c60bece482892ca0f28655f2d5370d96d42f946a
+Author: julien <julien@twitter.com>
+Date:   Tue Nov 25 10:48:54 2014 -0800
+
+    PARQUET-52: refactor fallback mechanism
+    
+    See: https://issues.apache.org/jira/browse/PARQUET-52
+    Context:
+    In the ValuesWriter API there is a mechanism to return the Encoding actually used which allows to fallback to a different encoding.
+    For example the dictionary encoding may fail if there are too many distinct values and the dictionary grows too big. In such cases the DictionaryValuesWriter was falling back to the Plain encoding.
+    This can happen as well if the space savings are not satisfying when writing the first page and we prefer to fallback to a more light weight encoding.
+    With Parquet 2.0 we are adding new encodings and the fall back is not necessarily Plain anymore.
+    This Pull Request decouple the fallback mechanism from Dictionary and Plain encodings and allows to reuse the fallback logic with other encodings.
+    One could imagine more than one level of fallback in the future by chaining the FallBackValuesWriter.
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #74 from julienledem/fallback and squashes the following commits:
+    
+    b74a4ca [julien] Merge branch 'master' into fallback
+    d9abd62 [julien] better naming
+    aa90caf [julien] exclude values encoding from SemVer
+    10f295e [julien] better test setup
+    c516bd9 [julien] improve test
+    780c4c3 [julien] license header
+    f16311a [julien] javadoc
+    aeb8084 [julien] add more test; fix dic decoding
+    0793399 [julien] Merge branch 'master' into fallback
+    2638ec9 [julien] fix dictionary encoding labelling
+    2fd9372 [julien] consistent naming
+    cf7a734 [julien] rewrite ParquetProperties to enable proper fallback
+    bf1474a [julien] refactor fallback mechanism
+    
+    Conflicts:
+    	pom.xml
+    Resolution:
+        Addition to a commented-out section.
+
+commit 6c4940a5ada8b6fb63aa9f813ec9eb52c30974c8
+Author: Ryan Blue <blue@apache.org>
+Date:   Thu Feb 5 09:53:31 2015 -0800
+
+    CLOUDERA-BUILD. Remove use of TBinaryProtocol#setReadLength.
+    
+    This is no longer supported in thrift 0.9.2 and was only used
+    defensively. The reason to remove it now is to avoid linker errors when
+    the wrong version of thrift is found in the classpath.
+    
+    Upstream will probably add a dynamic call to this method when it is
+    present, but this depends on 0.9.2 so it is not present.
+
+commit eade9b66e885d986d3a766fa093881927697750e
+Author: Wolfgang Hoschek <whoschek@cloudera.com>
+Date:   Thu Dec 11 14:01:27 2014 -0800
+
+    PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+    
+    PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+    
+    Author: Wolfgang Hoschek <whoschek@cloudera.com>
+    
+    Closes #93 from whoschek/PARQUET-145-3 and squashes the following commits:
+    
+    52a6acb [Wolfgang Hoschek] PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+
+commit 4fe64063389b79fdb5fffbc258c06dcffcbb3c72
+Author: Josh Wills <jwills@cloudera.com>
+Date:   Tue Dec 2 16:19:14 2014 +0000
+
+    PARQUET-140: Allow clients to control the GenericData instance used to read Avro records
+    
+    Author: Josh Wills <jwills@cloudera.com>
+    
+    Closes #90 from jwills/master and squashes the following commits:
+    
+    044cf54 [Josh Wills] PARQUET-140: Allow clients to control the GenericData object that is used to read Avro records
+
+commit 10d3e3e75b8505c8df6a487a6b7671baff743779
+Author: Brock Noland <brock@apache.org>
+Date:   Thu Nov 20 09:19:25 2014 -0800
+
+    PARQUET-114: Sample NanoTime class serializes and deserializes Timestamp incorrectly
+    
+    I ran the Parquet Column tests and they passed.
+    
+    FYI @rdblue
+    
+    Author: Brock Noland <brock@apache.org>
+    
+    Closes #71 from brockn/master and squashes the following commits:
+    
+    69ba484 [Brock Noland] PARQUET-114 - Sample NanoTime class serializes and deserializes Timestamp incorrectly
+
+commit 98e688efb0d0594b19fcce26b0896af1314b8800
+Author: Ryan Blue <blue@apache.org>
+Date:   Tue Nov 18 20:20:04 2014 -0800
+
+    PARQUET-132: Add type parameter to AvroParquetInputFormat.
+    
+    Author: Ryan Blue <blue@apache.org>
+    
+    Closes #84 from rdblue/PARQUET-132-parameterize-avro-inputformat and squashes the following commits:
+    
+    63114b0 [Ryan Blue] PARQUET-132: Add type parameter to AvroParquetInputFormat.
+
+commit 24e6ad23fede5165ff555d0a773a1c39ec104072
+Author: elif dede <edede@twitter.com>
+Date:   Mon Nov 17 16:53:08 2014 -0800
+
+    PARQUET-135: Input location is not getting set for the getStatistics in ParquetLoader when using two different loaders within a Pig script.
+    
+    Author: elif dede <edede@twitter.com>
+    
+    Closes #86 from elifdd/parquetLoader_error_PARQUET-135 and squashes the following commits:
+    
+    b0150ee [elif dede] fixed white space
+    bdb381a [elif dede] PARQUET-135: Call setInput from getStatistics in ParquetLoader to fix ReduceEstimator errors in pig jobs
+    
+    Conflicts:
+    	parquet-hadoop/src/test/java/parquet/format/converter/TestParquetMetadataConverter.java
+    Resolution:
+        Upstream patch 251a495 has only a whitespace change for this file,
+        the conflict was in an area not backported. No change to the file.
+
+commit c5d264816923f0ed77cb14474d102b7f42e869e6
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Mon Sep 22 11:11:08 2014 -0700
+
+    PARQUET-94: Fix bug in ParquetScroogeScheme constructor, minor cleanup
+    
+    I noticed that ParquetScroogeScheme's constructor ignores the provided klass argument.
+    I also added in missing type parameters for the Config object where they were missing.
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    
+    Closes #61 from isnotinvain/alexlevenson/parquet-scrooge-cleanup and squashes the following commits:
+    
+    2b16007 [Alex Levenson] Fix bug in ParquetScroogeScheme constructor, minor cleanup
+
+commit e7419cc3313f94564d3e739ff5d7290a7820c35a
+Author: Tianshuo Deng <tdeng@twitter.com>
+Date:   Wed Sep 10 10:37:51 2014 -0700
+
+    PARQUET-87: Add API for projection pushdown on the cascading scheme level
+    
+    JIRA: https://issues.apache.org/jira/browse/PARQUET-87
+    Previously, the projection pushdown configuration is global, and not bind to a specific tap.
+    After adding this API, projection pushdown can be done more "naturally", which may benefit scalding. The code that uses this API would look like:
+    
+    ```
+    Scheme sourceScheme = new ParquetScroogeScheme(new Config().withProjection(projectionFilter));
+     Tap source = new Hfs(sourceScheme, PARQUET_PATH);
+    ```
+    
+    Author: Tianshuo Deng <tdeng@twitter.com>
+    
+    Closes #51 from tsdeng/projection_from_scheme and squashes the following commits:
+    
+    2c72757 [Tianshuo Deng] make config class final
+    813dc1a [Tianshuo Deng] erge branch 'master' into projection_from_scheme
+    b587b79 [Tianshuo Deng] make constructor of Config private, fix format
+    3aa7dd2 [Tianshuo Deng] remove builder
+    9348266 [Tianshuo Deng] use builder()
+    7c91869 [Tianshuo Deng] make fields of Config private, create builder method for Config
+    5fdc881 [Tianshuo Deng] builder for setting projection pushdown and predicate pushdown
+    a47f271 [Tianshuo Deng] immutable
+    3d514b1 [Tianshuo Deng] done
+
+commit 26e8d40e1903d8a2553cb3f77a207fd215ef7cc7
+Author: julien <julien@twitter.com>
+Date:   Tue Sep 9 15:45:20 2014 -0700
+
+    upgrade scalatest_version to depend on scala 2.10.4
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #52 from julienledem/scalatest_version and squashes the following commits:
+    
+    945fa75 [julien] upgrade scalatest_version to depend on scala 2.10.4
+
+commit 36369848ff80ff910fc8b6bfd8e51671a241997a
+Author: Tianshuo Deng <tdeng@twitter.com>
+Date:   Mon Sep 8 14:12:11 2014 -0700
+
+    update scala 2.10
+    
+    Try to upgrade to scala 2.10
+    
+    Author: Tianshuo Deng <tdeng@twitter.com>
+    
+    Closes #35 from tsdeng/update_scala_2_10 and squashes the following commits:
+    
+    1b7e55f [Tianshuo Deng] fix comment
+    bed9de3 [Tianshuo Deng] remove twitter artifactory
+    2bce643 [Tianshuo Deng] publish fix
+    06b374e [Tianshuo Deng] define scala.binary.version
+    fcf6965 [Tianshuo Deng] Merge branch 'master' into update_scala_2_10
+    e91d9f7 [Tianshuo Deng] update version
+    5d18b88 [Tianshuo Deng] version
+    83df898 [Tianshuo Deng] update scala 2.10
+    
+    Conflicts:
+    	pom.xml
+    Resolution:
+        Newline addition caused a spurrious conflict and deconflicted CDH
+        version changes with Scala version update.
+
+commit df1eb3a0abdfed7ffb685dd207c7a7f02f1936da
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Mon Aug 18 10:38:11 2014 -0700
+
+    PARQUET-73: Add support for FilterPredicates to cascading schemes
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    
+    Closes #34 from isnotinvain/alexlevenson/filter-cascading-scheme and squashes the following commits:
+    
+    cd69a8e [Alex Levenson] Add support for FilterPredicates to cascading schemes
+
+commit 058c5010f1bc820173d73471d96c1602cd42ee3a
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Wed Jul 30 13:49:00 2014 -0700
+
+    Only call put() when needed in SchemaCompatibilityValidator#validateColumn()
+    
+    This is some minor cleanup suggested by @tsdeng
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    
+    Closes #24 from isnotinvain/alexlevenson/columnTypesEncountered and squashes the following commits:
+    
+    7f05d90 [Alex Levenson] Only call put() when needed in SchemaCompatibilityValidator#validateColumn()
+
+commit 099f4b6b0f0b614566b2b1943354a233095e990a
+Author: Alex Levenson <alexlevenson@twitter.com>
+Date:   Tue Jul 29 14:38:59 2014 -0700
+
+    Add a unified and optionally more constrained API for expressing filters on columns
+    
+    This is a re-opened version of:
+    https://github.com/Parquet/parquet-mr/pull/412
+    
+    The idea behind this pull request is to add a way to express filters on columns using DSL that allows parquet visibility into what is being filtered and how. This visibility will allow us to make optimizations at read time, the biggest one being filtering entire row groups or pages of records without even reading them based on the statistics / metadata that is stored along with each row group or page.
+    
+    Included in this api are interfaces for user defined predicates, which must operate at the value level by may opt in to operating at the row group / page level as well. This should make this new API a superset of the `parquet.filter` package. This new api will need to be reconciled with the column filters currently in the `parquet.filter` package, but I wanted to get feedback on this first.
+    
+    A limitation in both this api and the old one is that you can't do cross-column filters, eg: columX > columnY.
+    
+    Author: Alex Levenson <alexlevenson@twitter.com>
+    
+    Closes #4 from isnotinvain/alexlevenson/filter-api and squashes the following commits:
+    
+    c1ab7e3 [Alex Levenson] Address feedback
+    c1bd610 [Alex Levenson] cleanup dotString in ColumnPath
+    418bfc1 [Alex Levenson] Update version, add temporary hacks for semantic enforcer
+    6643bd3 [Alex Levenson] Fix some more non backward incompatible changes
+    39f977f [Alex Levenson] Put a bunch of backwards compatible stuff back in, add @Deprecated
+    13a02c6 [Alex Levenson] Fix compile errors, add back in overloaded getRecordReader
+    f82edb7 [Alex Levenson] Merge branch 'master' into alexlevenson/filter-api
+    9bd014f [Alex Levenson] clean up TODOs and reference jiras
+    4cc7e87 [Alex Levenson] Add some comments
+    30e3d61 [Alex Levenson] Create a common interface for both kinds of filters
+    ac153a6 [Alex Levenson] Create a Statistics class for use in UDPs
+    fbbf601 [Alex Levenson] refactor IncrementallyUpdatedFilterPredicateGenerator to only generate the parts that require generation
+    5df47cd [Alex Levenson] Static imports of checkNotNull
+    c1d1823 [Alex Levenson] address some of the minor feedback items
+    67a3ba0 [Alex Levenson] update binary's toString
+    3d7372b [Alex Levenson] minor fixes
+    fed9531 [Alex Levenson] Add skipCurrentRecord method to clear events in thrift converter
+    2e632d5 [Alex Levenson] Make Binary Serializable
+    09c024f [Alex Levenson] update comments
+    3169849 [Alex Levenson] fix compilation error
+    0185030 [Alex Levenson] Add integration test for value level filters
+    4fde18c [Alex Levenson] move to right package
+    ae36b37 [Alex Levenson] Handle merge issues
+    af69486 [Alex Levenson] Merge branch 'master' into alexlevenson/filter-api
+    0665271 [Alex Levenson] Add tests for value inspector
+    c5e3b07 [Alex Levenson] Add tests for resetter and evaluator
+    29f677a [Alex Levenson] Fix scala DSL
+    8897a28 [Alex Levenson] Fix some tests
+    b448bee [Alex Levenson] Fix mistake in MessageColumnIO
+    c8133f8 [Alex Levenson] Fix some tests
+    4cf686d [Alex Levenson] more null checks
+    69e683b [Alex Levenson] check all the nulls
+    220a682 [Alex Levenson] more cleanup
+    aad5af3 [Alex Levenson] rm generated src file from git
+    5075243 [Alex Levenson] more minor cleanup
+    9966713 [Alex Levenson] Hook generation into maven build
+    8282725 [Alex Levenson] minor cleanup
+    fea3ea9 [Alex Levenson] minor cleanup
+    9e35406 [Alex Levenson] move statistics filter
+    c52750c [Alex Levenson] finish moving things around
+    97a6bfd [Alex Levenson] Move things around pt2
+    843b9fe [Alex Levenson] Move some files around pt 1
+    5eedcc0 [Alex Levenson] turn off dictionary support for AtomicConverter
+    541319e [Alex Levenson] various cleanup and fixes
+    08e9638 [Alex Levenson] rm ColumnPathUtil
+    bfe6795 [Alex Levenson] Add type bounds to FilterApi
+    6c831ab [Alex Levenson] don't double log exception in SerializationUtil
+    a7a58d1 [Alex Levenson] use ColumnPath instead of String
+    8f11a6b [Alex Levenson] Move ColumnPath and Canonicalizer to parquet-common
+    9164359 [Alex Levenson] stash
+    abc2be2 [Alex Levenson] Add null handling to record filters -- this impl is still broken though
+    90ba8f7 [Alex Levenson] Update Serialization Util
+    0a261f1 [Alex Levenson] Add compression in SerializationUtil
+    f1278be [Alex Levenson] Add comment, fix tests
+    cbd1a85 [Alex Levenson] Replace some specialization with generic views
+    e496cbf [Alex Levenson] Fix short circuiting in StatisticsFilter
+    db6b32d [Alex Levenson] Address some comments, fix constructor in ParquetReader
+    fd6f44d [Alex Levenson] Fix semver backward compat
+    2fdd304 [Alex Levenson] Some more cleanup
+    d34fb89 [Alex Levenson] Cleanup some TODOs
+    544499c [Alex Levenson] stash
+    7b32016 [Alex Levenson] Merge branch 'master' into alexlevenson/filter-api
+    0e31251 [Alex Levenson] First pass at values filter, needs reworking
+    470e409 [Alex Levenson] fix java6/7 bug, minor cleanup
+    ee7b221 [Alex Levenson] more InputFormat tests
+    5ef849e [Alex Levenson] Add guards for not specifying both kinds of filter
+    0186b1f [Alex Levenson] Add logging to ParquetInputFormat and tests for configuration
+    a622648 [Alex Levenson] cleanup imports
+    9b1ea88 [Alex Levenson] Add tests for statistics filter
+    d517373 [Alex Levenson] tests for filter validator
+    b25fc44 [Alex Levenson] small cleanup of filter validator
+    32067a1 [Alex Levenson] add test for collapse logical nots
+    1efc198 [Alex Levenson] Add tests for invert filter predicate
+    046b106 [Alex Levenson] some more fixes
+    d3c4d7a [Alex Levenson] fix some more types, add in test for SerializationUtil
+    cc51274 [Alex Levenson] fix generics in FilterPredicateInverter
+    ea08349 [Alex Levenson] First pass at rowgroup filter, needs testing
+    156d91b [Alex Levenson] Add runtime type checker
+    4dfb4f2 [Alex Levenson] Add serialization util
+    8f80b20 [Alex Levenson] update comment
+    7c25121 [Alex Levenson] Add class to Column struct
+    58f1190 [Alex Levenson] Remove filterByUniqueValues
+    7f20de6 [Alex Levenson] rename user predicates
+    af14b42 [Alex Levenson] Update dsl
+    04409c5 [Alex Levenson] Add generic types into Visitor
+    ba42884 [Alex Levenson] rm getClassName
+    65f8af9 [Alex Levenson] Add in support for user defined predicates on columns
+    6926337 [Alex Levenson] Add explicit tokens for notEq, ltEq, gtEq
+    667ec9f [Alex Levenson] remove test for collapsing double negation
+    db2f71a [Alex Levenson] rename FilterPredicatesTest
+    a0a0533 [Alex Levenson] Address first round of comments
+    b2bca94 [Alex Levenson] Add scala DSL and tests
+    bedda87 [Alex Levenson] Add tests for FilterPredicate building
+    238cbbe [Alex Levenson] Add scala dsl
+    39f7b24 [Alex Levenson] add scala mvn boilerplate
+    2ec71a7 [Alex Levenson] Add predicate API
+    
+    Conflicts:
+    	parquet-column/src/main/java/parquet/io/api/Binary.java
+    	parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java
+    Resolution:
+        InternalParquetRecordReader: conflicts from not backporting
+            PARQUET-2, which were minor.
+        Binary: changed several anonymous classes to private static.
+            Conflict appears to be an artifact of major changes. The
+            important thing to verify is that these don't break binary
+            compatibility.
+    
+    Version conflicts:
+    	parquet-avro/pom.xml
+    	parquet-cascading/pom.xml
+    	parquet-column/pom.xml
+    	parquet-common/pom.xml
+    	parquet-encoding/pom.xml
+    	parquet-generator/pom.xml
+    	parquet-hadoop-bundle/pom.xml
+    	parquet-hadoop/pom.xml
+    	parquet-hive-bundle/pom.xml
+    	parquet-hive/parquet-hive-binding/parquet-hive-0.10-binding/pom.xml
+    	parquet-hive/parquet-hive-binding/parquet-hive-0.12-binding/pom.xml
+    	parquet-hive/parquet-hive-binding/parquet-hive-binding-bundle/pom.xml
+    	parquet-hive/parquet-hive-binding/parquet-hive-binding-factory/pom.xml
+    	parquet-hive/parquet-hive-binding/parquet-hive-binding-interface/pom.xml
+    	parquet-hive/parquet-hive-binding/pom.xml
+    	parquet-hive/parquet-hive-storage-handler/pom.xml
+    	parquet-hive/pom.xml
+    	parquet-jackson/pom.xml
+    	parquet-pig-bundle/pom.xml
+    	parquet-pig/pom.xml
+    	parquet-protobuf/pom.xml
+    	parquet-scrooge/pom.xml
+    	parquet-test-hadoop2/pom.xml
+    	parquet-thrift/pom.xml
+    	parquet-tools/pom.xml
+    	pom.xml
+
+commit 2cdbf4f5cab583d47010bed70b4cbf9c67af2754
+Author: Matt Massie <massie@cs.berkeley.edu>
+Date:   Mon Nov 3 14:00:33 2014 +0000
+
+    PARQUET-123: Enable dictionary support in AvroIndexedRecordConverter
+    
+    If consumers are loading Parquet records into an immutable structure
+    like an Apache Spark RDD, being able to configure string reuse in
+    AvroIndexedRecordConverter can drastically reduce the overall memory
+    footprint of strings.
+    
+    NOTE: This isn't meant to be a merge-able PR (yet). I want to use
+    this PR as a way to discuss: (1) if this is a reasonable approach
+    and (2) to learn if PrimitiveConverter needs to be thread-safe as
+    I'm currently using a ConcurrentHashMap. If there's agreement
+    that this would be worthwhile, I'll create a JIRA and write some
+    unit tests.
+    
+    Author: Matt Massie <massie@cs.berkeley.edu>
+    
+    Closes #76 from massie/immutable-strings and squashes the following commits:
+    
+    88ce5bf [Matt Massie] PARQUET-123: Enable dictionary support in AvroIndexedRecordConverter
+
+commit 1f0b622bb0b3e37ddaf647e46837351f44e2d6c9
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Wed Oct 1 13:44:45 2014 -0700
+
+    PARQUET-64: Add new OriginalTypes in parquet-format 2.2.0.
+    
+    This implements the restrictions for those types documented in the parquet-format logical types spec.
+    
+    This requires a release of parquet-format 2.2.0 with the new types. I'll rebase and update the dependency when it is released.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #31 from rdblue/PARQUET-64-add-new-types and squashes the following commits:
+    
+    10feab9 [Ryan Blue] PARQUET-64: Add new OriginalTypes in parquet-format 2.2.0.
+
+commit ed19e294ce8e11161508946d8f421972b57cd0fb
+Author: Tianshuo Deng <tdeng@twitter.com>
+Date:   Mon Sep 29 12:00:03 2014 -0700
+
+    PARQUET-104: Fix writing empty row group at the end of the file
+    
+    At then end of a parquet file, it may writes an empty rowgroup.
+    This happens when: numberOfRecords mod sizeOfRowGroup = 0
+    
+    Author: Tianshuo Deng <tdeng@twitter.com>
+    
+    Closes #66 from tsdeng/fix_empty_row_group and squashes the following commits:
+    
+    10b93fb [Tianshuo Deng] rename
+    e3a5896 [Tianshuo Deng] format
+    91fa0d4 [Tianshuo Deng] fix empty row group
+    
+    Conflicts:
+    	parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+    Resolution:
+        Close had a conflict from the extra metadata addition in 792b149,
+        PARQUET-67. This applied just the rename changes for the flush method
+        and the file writer.
+
+commit 576088da7de58e23dfdc575cc3de186fa09bc539
+Author: Colin Marc <colinmarc@gmail.com>
+Date:   Thu Sep 25 16:45:56 2014 -0700
+
+    PARQUET-96: fill out some missing methods on parquet.example classes
+    
+    I'm slightly embarrassed to say that we use these, and we'd really like to stop needing a fork, so here we are.
+    
+    Author: Colin Marc <colinmarc@gmail.com>
+    
+    Closes #59 from colinmarc/missing-group-methods and squashes the following commits:
+    
+    af8ea08 [Colin Marc] fill out some missing methods on parquet.example classes
+    
+    Conflicts:
+    	parquet-column/src/main/java/parquet/example/data/GroupValueSource.java
+    	parquet-column/src/main/java/parquet/example/data/simple/SimpleGroup.java
+    Resolution:
+        Method additions, not real conflicts.
+
+commit 1187f7189e5bf0a06e045929b457fc195117dc41
+Author: julien <julien@twitter.com>
+Date:   Thu Sep 25 11:25:53 2014 -0700
+
+    PARQUET-90: integrate field ids in schema
+    
+    This integrates support for field is that was introduced in Parquet format.
+    Thrift and Protobufs ids will now be saved in the Parquet schema.
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #56 from julienledem/field_ids and squashes the following commits:
+    
+    62c2809 [julien] remove withOriginalType; use Typles builder more
+    8ff0034 [julien] review feedback
+    084c8be [julien] binary compat
+    85d785c [julien] add proto id in schema; fix schema parsing for ids
+    d4be488 [julien] integrate field ids in schema
+    
+    Conflicts:
+    	parquet-column/src/main/java/parquet/schema/GroupType.java
+    	parquet-column/src/main/java/parquet/schema/MessageType.java
+    	parquet-column/src/main/java/parquet/schema/Type.java
+    Resolution:
+        The conflicting methods were added in 9ad5485, PARQUET-2, with type
+        persuasion. Because nothing calls these methods, they are not
+        needed.
+
+commit 8633c488d161fbec98e08248ffbbd1c0469e6eb5
+Author: Tom White <tom@cloudera.com>
+Date:   Wed Oct 29 20:48:23 2014 +0000
+
+    Enforce CDH-wide version of Jackson.
+
+commit 7d9407e63249b7ec9239208b45e47f68afe7defc
+Author: Tom White <tom@cloudera.com>
+Date:   Mon Nov 3 14:37:17 2014 +0000
+
+    CLOUDERA-BUILD. Add javaVersion property and enforce it.
+
+commit d4fb453ccacf8768a173f6e9dece0f5c45118b34
+Author: Tom White <tom@cloudera.com>
+Date:   Mon Nov 3 14:11:03 2014 +0000
+
+    PARQUET-121: Allow Parquet to build with Java 8
+    
+    There are test failures running with Java 8 due to http://openjdk.java.net/jeps/180 which changed retrieval order for HashMap.
+    
+    Here's how I tested this:
+    
+    ```bash
+    use-java8
+    mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+    mvn test
+    mvn test -P hadoop-2
+    ```
+    
+    I also compiled the main code with Java 7 (target=1.6 bytecode), and compiled the tests with Java 8, and ran them with Java 8. The idea here is to simulate users who want to run Parquet with JRE 8.
+    ```bash
+    use-java7
+    mvn clean install -DskipTests -Dmaven.javadoc.skip=true
+    use-java8
+    find . -name test-classes | grep target/test-classes | grep -v 'parquet-scrooge' | xargs rm -rf
+    mvn test -DtargetJavaVersion=1.8 -Dmaven.main.skip=true -Dscala.maven.test.skip=true
+    ```
+    A couple of notes about this:
+    * The targetJavaVersion property is used since other Hadoop projects use the same name.
+    * I couldn’t get parquet-scrooge to compile with target=1.8, which is why I introduced scala.maven.test.skip (and updated scala-maven-plugin to the latest version which supports the property). Compiling with target=1.8 should be fixed in another JIRA as it looks pretty involved.
+    
+    Author: Tom White <tom@cloudera.com>
+    
+    Closes #77 from tomwhite/PARQUET-121-java8 and squashes the following commits:
+    
+    8717e13 [Tom White] Fix tests to run under Java 8.
+    35ea670 [Tom White] PARQUET-121. Allow Parquet to build with Java 8.
+
+commit a284001872aaf579719a1992123fff1023bfb6c4
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Tue Oct 28 10:21:40 2014 -0700
+
+    Preparing for CDH5.4.0 development
+
+commit 2d6301176789f35c05d052d2a6299dd4e86afc64
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Wed Oct 1 14:14:24 2014 -0700
+
+    PARQUET-107: Add option to disable summary metadata.
+    
+    This adds an option to the commitJob phase of the MR OutputCommitter,
+    parquet.enable.summary-metadata (default true), that can be used to
+    disable the summary metadata files generated from the footers of all of
+    the files produced. This enables more control over when those summary
+    files are produced and makes it possible to rename MR outputs and then
+    generate the summaries.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #68 from rdblue/PARQUET-107-add-summary-metadata-option and squashes the following commits:
+    
+    261e5e4 [Ryan Blue] PARQUET-107: Add option to disable summary metadata.
+
+commit 5ee6d69592bd77d5be33ffe5b419a93631a92775
+Author: Ryan Blue <blue@apache.org>
+Date:   Tue Sep 30 17:00:50 2014 -0700
+
+    CLOUDERA-BUILD. Enable parquet-scrooge module.
+
+commit 6452d639c4a6b51480bfad20a124fa346afd3b3a
+Author: Jenkins slave <kitchen-build@cloudera.com>
+Date:   Fri Sep 26 09:26:30 2014 -0700
+
+    Preparing for CDH5.3.0 development
+
+commit a925b9b749be4413240fb260b115401cddb8746e
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Tue Sep 23 12:14:17 2014 -0700
+
+    PARQUET-82: Check page size is valid when writing.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #48 from rdblue/PARQUET-82-check-page-size and squashes the following commits:
+    
+    9f31402 [Ryan Blue] PARQUET-82: Check page size is valid when writing.
+
+commit 5d750fb03446f1c7e6bb20da3b6cc182794cb472
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Mon Sep 22 11:21:20 2014 -0700
+
+    PARQUET-92: Pig parallel control
+    
+    The parallelism for reading footers was fixed at '5', which isn't optimal for using pig with S3.  Just adding a property to adjust the parallelism.
+    
+    JIRA: https://issues.apache.org/jira/browse/PARQUET-92
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #57 from dcw-netflix/pig-parallel-control and squashes the following commits:
+    
+    e49087c [Daniel Weeks] Update ParquetFileReader.java
+    ec4f8ca [Daniel Weeks] Added configurable control of parallelism
+    d37a6de [Daniel Weeks] Resetting pom to main
+    0c1572e [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+    98c6607 [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+    96ba602 [Daniel Weeks] Disabled projects that don't compile
+
+commit 374c4c482c39411e7cfeb04e14ba163e77db3d6f
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Thu Sep 4 11:28:03 2014 -0700
+
+    PARQUET-63: Enable dictionary encoding for FIXED.
+    
+    This uses the existing dictionary support introduced for int96. Encoding
+    and ParquetProperties have been updated to use the dictionary supporting
+    classes, when requested for write or present during read. This also
+    fixes a bug in the fixed dictionary values writer, where the length was
+    hard-coded for int96, 12 bytes.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #30 from rdblue/PARQUET-63-add-fixed-dictionary-support and squashes the following commits:
+    
+    bc34a34 [Ryan Blue] PARQUET-63: Enable dictionary encoding for FIXED.
+
+commit 2a0b165e058c83323d370ca87151b7cefccb1621
+Author: Tianshuo Deng <tdeng@twitter.com>
+Date:   Wed Sep 3 15:37:00 2014 -0700
+
+    do ProtocolEvents fixing only when there is required fields missing in the requested schema
+    
+    https://issues.apache.org/jira/browse/PARQUET-61
+    This PR is trying to redo the https://github.com/apache/incubator-parquet-mr/pull/7
+    
+    In this PR, it fixes the protocol event in a more precise condition:
+    Only when the requested schema missing some required fields that are present in the full schema
+    
+    So even if there a projection, as long as the projection is not getting rid of the required field, the protocol events amender will not be called.
+    
+    Could you take a look at this ? @dvryaboy @yan-qi
+    
+    Author: Tianshuo Deng <tdeng@twitter.com>
+    
+    Closes #28 from tsdeng/fix_protocol_when_required_field_missing and squashes the following commits:
+    
+    ba778b9 [Tianshuo Deng] add continue for readability
+    d5639df [Tianshuo Deng] fix unused import
+    090e894 [Tianshuo Deng] format
+    13a609d [Tianshuo Deng] comment format
+    ef1fe58 [Tianshuo Deng] little refactor, remove the hasMissingRequiredFieldFromProjection method
+    7c2c158 [Tianshuo Deng] format
+    83a5655 [Tianshuo Deng] do ProtocolEvents fixing only when there is required fields missing in the requested schema
+
+commit 0e9f24b8e2ff096b6e26093f263c5e8c8c95948e
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Thu Aug 28 11:30:50 2014 -0700
+
+    PARQUET-75: Fixed string decode performance issue
+    
+    Switch to using 'UTF8.decode' as opposed to 'new String'
+    
+    https://issues.apache.org/jira/browse/PARQUET-75
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #40 from dcw-netflix/string-decode and squashes the following commits:
+    
+    2cf53e7 [Daniel Weeks] Fixed string decode performance issue
+    
+    Conflicts:
+    	parquet-column/src/main/java/parquet/io/api/Binary.java
+        Resolution: conflict because anon classes are now static classes in
+                    master. just backported the fix, which is small.
+
+commit 2be528e2533ed2645cbd407f47071b4de3ce95b2
+Author: julien <julien@twitter.com>
+Date:   Thu Aug 28 10:35:19 2014 -0700
+
+    PARQUET-80: upgrade semver plugin version to 0.9.27
+    
+    To include the fix in:
+    https://github.com/jeluard/semantic-versioning/pull/39
+    
+    Author: julien <julien@twitter.com>
+    
+    Closes #46 from julienledem/upgrade_semver_plugin and squashes the following commits:
+    
+    30e7247 [julien] upgrade semver plugin version to 0.9.27
+
+commit 2606d36b3e8e03170c5c7167885a7109cdfb61cb
+Author: Eric Snyder <snyderep@gmail.com>
+Date:   Wed Aug 20 14:09:38 2014 -0700
+
+    PARQUET-66: Upcast blockSize to long to prevent integer overflow.
+    
+    Author: Eric Snyder <snyderep@gmail.com>
+    
+    Closes #33 from snyderep/master and squashes the following commits:
+    
+    c99802e [Eric Snyder] PARQUET-66: Upcast blockSize to long to prevent integer overflow.
+
+commit fe8228d2bf4a7f6638cc8cbfe8282d94f643c984
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Wed Aug 20 14:02:01 2014 -0700
+
+    PARQUET-62: Fix binary dictionary write bug.
+    
+    The binary dictionary writers keep track of written values in memory to
+    deduplicate and write dictionary pages periodically. If the written
+    values are changed by the caller, then this corrupts the dictionary
+    without an error message. This adds a defensive copy to fix the problem.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #29 from rdblue/PARQUET-62-fix-dictionary-bug and squashes the following commits:
+    
+    42b6920 [Ryan Blue] PARQUET-62: Fix binary dictionary write bug.
+
+commit 2ff0ca66310e2b7a53796f81d39c2ca5a21ce7b8
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Wed Aug 20 13:52:42 2014 -0700
+
+    Parquet-70: Fixed storing pig schema to udfcontext for non projection case and moved...
+    
+    ... column index access setting to udfcontext so as not to affect other loaders.
+    
+    I found an problem that affects both the Column name access and column index access due to the way the pig schema is stored by the loader.
+    
+    ##Column Name Access:
+    The ParquetLoader was only storing the pig schema in the UDFContext when push projection is applied.  In the full load case, the schema was not stored which triggered a full reload of the schema during task execution.  You can see in initSchema references the UDFContext for the schema, but that is only set in push projection.  However, the schema needs to be set in both the job context (so the TupleReadSupport can access the schema) and the UDFContext (so the task side loader can access it), which is why it is set in both locations.  This also meant the requested schema was never set to the task side either, which could cause other problems as well.
+    
+    ##Column Index Access:
+    For index based access, the problem was that the column index access setting and the requested schema were not stored in the udfcontext and sent to the task side (unless pushProjection was called).  The schema was stored in the job context, but this would be overwritten if another loader was executed first.  Also, the property to use column index access was only being set at the job context level, so subsequent loaders would use column index access even if they didn't request it.
+    
+    This fix now ensures that both the schema and column index access are set in the udfcontext and loaded in the initSchema method.
+    
+    JIRA: https://issues.apache.org/jira/browse/PARQUET-70
+    
+    -Dan
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #36 from dcw-netflix/pig-schema-context and squashes the following commits:
+    
+    f896a25 [Daniel Weeks] Moved property loading into setInput
+    8f3dc28 [Daniel Weeks] Changed to set job conf settings in both front and backend
+    d758de0 [Daniel Weeks] Updated to use isFrontend() for setting context properties
+    b7ef96a [Daniel Weeks] Fixed storing pig schema to udfcontext for non projection case and moved column index access setting to udfcontext so as not to affect other loaders.
+
+commit e800d419700a67a344d3b9c347fc6a9e0ede6e3d
+Author: Cheng Lian <lian.cs.zju@gmail.com>
+Date:   Fri Aug 1 16:38:03 2014 -0700
+
+    PARQUET-13: The `-d` option for `parquet-schema` shouldn't have optional argument
+    
+    Author: Cheng Lian <lian.cs.zju@gmail.com>
+    
+    Closes #11 from liancheng/fix-cli-arg and squashes the following commits:
+    
+    85a5453 [Cheng Lian] Reverted the dummy change
+    47ce817 [Cheng Lian] Dummy change to trigger Travis
+    1c0a244 [Cheng Lian] The `-d` option for `parquet-schema` shouldn't have optional argument
+
+commit 7a3609693e9a016c9c622021f9f6ef6baa59210e
+Author: Daniel Weeks <dweeks@netflix.com>
+Date:   Mon Jul 28 18:07:07 2014 -0700
+
+    Column index access support
+    
+    This patch adds the ability to use column index based access to parquet files in pig, which allows for rename capability similar to other file formats.  This is achieved by using the parametrized loader with an alternate schema.
+    
+    Example:
+    p = LOAD '/data/parquet/' USING parquet.pig.ParquetLoader('n1:int, n2:float, n3:chararray', 'true');
+    
+    In this example, the names from the requested schema will be translated to the column positions from the file and will produce tuples based on the index position.
+    
+    Two test cases are included that exercise index based access for both full file reads and column projected reads.
+    
+    Note:  This patch also disables the enforcer plugin on the pig project per discussion at the parquet meetup.  The justification for this is that the enforcer is too strict for internal classes and results in dead code because duplicating methods is required to add parameters where there is only one usage of the constructor/method.  The interface for the pig loader is imposed by LoadFunc and StoreFunc by the pig project and the implementations internals should not be used directly.
+    
+    Author: Daniel Weeks <dweeks@netflix.com>
+    
+    Closes #12 from dcw-netflix/column-index-access and squashes the following commits:
+    
+    1b5c5cf [Daniel Weeks] Refactored based on rewview comments
+    12b53c1 [Daniel Weeks] Fixed some formatting and the missing filter method sig
+    e5553f1 [Daniel Weeks] Adding back default constructor to satisfy other project requirements
+    69d21e0 [Daniel Weeks] Merge branch 'master' into column-index-access
+    f725c6f [Daniel Weeks] Removed enforcer for pig support
+    d182dc6 [Daniel Weeks] Introduces column index access
+    1c3c0c7 [Daniel Weeks] Fixed test with strict checking off
+    f3cb495 [Daniel Weeks] Added type persuasion for primitive types with a flag to control strict type checking for conflicting schemas, which is strict by default.
+    
+    Conflicts:
+    	parquet-pig/src/test/java/parquet/pig/TestParquetLoader.java
+        Resolution: removed parts of 9ad5485 (not backported) in the tests.
+
+commit ec8f54af732ebc2c3439a260d9e7205b8234d0cf
+Author: Sandy Ryza <sandy.ryza@cloudera.com>
+Date:   Wed Jul 23 14:29:35 2014 +0100
+
+    PARQUET-25. Pushdown predicates only work with hardcoded arguments.
+    
+    Pull request for Sandy Ryza's fix for PARQUET-25.
+    
+    Author: Sandy Ryza <sandy.ryza@cloudera.com>
+    
+    Closes #22 from tomwhite/PARQUET-25-unbound-record-filter-configurable and squashes the following commits:
+    
+    a9d3fdc [Sandy Ryza] PARQUET-25. Pushdown predicates only work with hardcoded arguments.
+
+commit a7c05be4e0d5b0cae4b583a57bee7ac663278ebc
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Fri Jul 18 16:19:25 2014 -0700
+
+    PARQUET-18: Fix all-null value pages with dict encoding.
+    
+    TestDictionary#testZeroValues demonstrates the problem, where a page of
+    all null values is decoded using the DicitonaryValuesReader. Because
+    there are no non-null values, the page values section is 0 byte, but the
+    DictionaryValuesReader assumes there is at least one encoded value and
+    attempts to read a bit width. The test passes a byte array to
+    initFromPage with the offset equal to the array's length.
+    
+    The fix is to detect that there are no input bytes to read. To avoid
+    adding validity checks to the read path, this sets the internal decoder
+    to one that will throw an exception if any reads are attempted.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #18 from rdblue/PARQUET-18-fix-nulls-with-dictionary and squashes the following commits:
+    
+    0711766 [Ryan Blue] PARQUET-18: Fix all-null value pages with dict encoding.
+
+commit ba5bc9d9851acd4f325f8d1988f24debcafef823
+Author: Matthieu Martin <ma.tt.b.ma.rt.in+parquet@gmail.com>
+Date:   Fri Jul 18 16:02:09 2014 -0700
+
+    PARQUET-4: Use LRU caching for footers in ParquetInputFormat.
+    
+    Reopening https://github.com/Parquet/parquet-mr/pull/403 against the new Apache repository.
+    
+    Author: Matthieu Martin <ma.tt.b.ma.rt.in+parquet@gmail.com>
+    
+    Closes #2 from matt-martin/master and squashes the following commits:
+    
+    99bb5a3 [Matthieu Martin] Minor javadoc and whitespace changes. Also added the FileStatusWrapper class to ParquetInputFormat to make sure that the debugging log statements print out meaningful paths.
+    250a398 [Matthieu Martin] Be less aggressive about checking whether the underlying file has been appended to/overwritten/deleted in order to minimize the number of namenode interactions.
+    d946445 [Matthieu Martin] Add javadocs to parquet.hadoop.LruCache.  Rename cache "entries" as cache "values" to avoid confusion with java.util.Map.Entry (which contains key value pairs whereas our old "entries" really only refer to the values).
+    a363622 [Matthieu Martin] Use LRU caching for footers in ParquetInputFormat.
+
+commit be4fdbfcd7008f363f53594f1a50611105681e07
+Author: Tom White <tom@cloudera.com>
+Date:   Wed Jul 16 14:50:29 2014 +0100
+
+    PARQUET-9: Filtering records across multiple blocks
+    
+    Update of the minimal fix discussed in https://github.com/apache/incubator-parquet-mr/pull/1, with the recursive call changed to to a loop.
+    
+    Author: Tom White <tom@cloudera.com>
+    Author: Steven Willis <swillis@compete.com>
+    
+    Closes #9 from tomwhite/filtering-records-across-multiple-blocks and squashes the following commits:
+    
+    afb08a4 [Tom White] Minimal fix
+    9e723ee [Steven Willis] Test for filtering records across multiple blocks
+
+commit 02642a739fed6b4771309545fca3075d0d2acb88
+Author: Maxwell Swadling <maxwell.swadling@nicta.com.au>
+Date:   Mon May 12 10:55:19 2014 +1000
+
+    Fixed hadoop WriteSupportClass loading
+
+commit d5f5f226378a773a8020e9821afa66c0b2641db0
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Fri Sep 12 10:54:11 2014 -0700
+
+    CLOUDERA-BUILD. Add protoc.executable property.
+
+commit b13f38116fc26aac625625cecec4dd0bef9ba24d
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Sep 8 15:43:12 2014 -0700
+
+    CLOUDERA-BUILD. Add mr1 profile for tests.
+
+commit 12346b3cfb934f74e213f3adde7e2028815452e3
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Thu Aug 28 17:56:07 2014 -0700
+
+    CLOUDERA-BUILD. Add back ctors removed since 1.2.5.
+    
+    Jdiff reports that from 1.2.5-cdh5.0.0 to 1.5.0-cdh5.2.0, the API has
+    had 4 removals:
+    * constructor ParquetThriftBytesOutputFormat(TProtocolFactory,
+                                      Class<TBase<?, ?>>, boolean)
+    * constructor ParquetWriter(Path, WriteSupport<T>, CompressionCodecName,
+                  int, int,int, boolean, boolean, Configuration) constructor
+    
+    * constructor ThriftBytesWriteSupport (TProtocolFactory,
+                                Class<TBase<?, ?>>, boolean)
+    * constructor ThriftToParquetFileWriter (Path, TaskAttemptContext,
+                        TProtocolFactory, Class<TBase<?, ?>>, boolean)
+    
+    This commits adds these constructors back to ensure compatibility.
+
+commit b4c75a0790d747da529e55c7c5f5bc2aa1d6176f
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Fri Aug 1 14:36:12 2014 -0700
+
+    CLOUDERA-BUILD. Add jdiff to POM.
+
+commit 5cad32c4ff0a60f22462cbc597416ad74c35ca8f
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Jul 28 18:16:57 2014 -0700
+
+    CLOUDERA-BUILD. Update to CDH avro version.
+
+commit 2be8acb0cf57a628ab5a9c3f0a068f697de3578b
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Jul 28 18:14:36 2014 -0700
+
+    CLOUDERA-BUILD. Update to CDH protobuf version.
+
+commit 532b752e96ed2251add1ca366363582902c80667
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Aug 4 19:04:18 2014 -0700
+
+    PARQUET-59: Fix parquet-scrooge test on hadoop-2.
+    
+    Author: Ryan Blue <rblue@cloudera.com>
+    
+    Closes #27 from rdblue/PARQUET-59-fix-scrooge-test-on-hadoop-2 and squashes the following commits:
+    
+    ac34369 [Ryan Blue] PARQUET-59: Fix parquet-scrooge test on hadoop-2.
+
+commit 0c532c156ad7ac609c8c0998ae139d6a63a14339
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sun Jul 27 15:54:30 2014 -0700
+
+    CLOUDERA-BUILD. CDH-16396: Comment out parquet-hive* from parquet pom.
+
+commit 45b6975cfc6485bdb6046bd639b393bd63b713db
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sun Jul 27 15:02:07 2014 -0700
+
+    CLOUDERA-BUILD. Update to CDH5 thrift version.
+
+commit b665f08cfc77469b337a492676c7cbff43d13383
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sun Jul 27 15:01:06 2014 -0700
+
+    CLOUDERA-BUILD. Update to parquet-format 2.1.0-cdh5.
+
+commit 9f9aee2153f2b73d1e9f283c7264d2af63380e76
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sun Jul 27 14:59:51 2014 -0700
+
+    CLOUDERA-BUILD. Disable semantic versioning checks.
+
+commit 2cafa0ae0911459bee0ba296238f9817ab733ab6
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sat Jul 26 16:37:22 2014 -0700
+
+    CLOUDERA-BUILD. Update Pig to CDH dependency.
+    
+    TestSummary needed to be modified because null is no longer allowed in a
+    Bag. Three nulls were removed and the validation method updated to
+    reflect the new structure of the test data.
+
+commit fa46bde2e360b35ea6a1aa7dbec3478ded7f7b04
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Sat Jul 26 16:23:15 2014 -0700
+
+    CLOUDERA-BUILD. Update to CDH Hadoop version.
+
+commit 8078d97ad3e18d8678c5d2b1394bf730c9739342
+Author: Ryan Blue <rblue@cloudera.com>
+Date:   Mon Jul 21 15:36:16 2014 -0700
+
+    CLOUDERA-BUILD. Update root POM for CDH packaging.

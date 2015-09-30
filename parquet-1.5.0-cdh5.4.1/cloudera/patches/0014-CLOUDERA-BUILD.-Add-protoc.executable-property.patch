@@ -1,0 +1,38 @@
+From d5f5f226378a773a8020e9821afa66c0b2641db0 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Fri, 12 Sep 2014 10:54:11 -0700
+Subject: [PATCH 14/93] CLOUDERA-BUILD. Add protoc.executable property.
+
+---
+ parquet-protobuf/pom.xml |    2 +-
+ pom.xml                  |    1 +
+ 2 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-protobuf/pom.xml b/parquet-protobuf/pom.xml
+index f88ee51..35da976 100644
+--- a/parquet-protobuf/pom.xml
++++ b/parquet-protobuf/pom.xml
+@@ -130,7 +130,7 @@
+               <tasks>
+                 <mkdir dir="${project.build.directory}/generated-test-sources" />
+                 <mkdir dir="${project.build.directory}/generated-test-sources/java" />
+-                <exec failonerror="true" executable="protoc">
++                <exec failonerror="true" executable="${protoc.executable}">
+                   <arg value="--java_out=${project.build.directory}/generated-test-sources/java" />
+                   <arg value="src/test/resources/TestProtobuf.proto" />
+                   <arg value="-I." />
+diff --git a/pom.xml b/pom.xml
+index 7118070..4a958c8 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -113,6 +113,7 @@
+     <log4j.version>1.2.17</log4j.version>
+     <previous.version>1.2.5-cdh5.2.0-SNAPSHOT</previous.version>
+     <thrift.executable>thrift</thrift.executable>
++    <protoc.executable>protoc</protoc.executable>
+     <pig.version>${cdh.pig.version}</pig.version>
+     <thrift.version>${cdh.thrift.version}</thrift.version>
+     <protobuf.version>${cdh.protobuf.version}</protobuf.version>
+-- 
+1.7.0.4
+

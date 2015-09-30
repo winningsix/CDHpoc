@@ -1,0 +1,25 @@
+From 8dd029f55521455a2ab6445ae491db399d878396 Mon Sep 17 00:00:00 2001
+From: Chao Sun <sunchao.chris@gmail.com>
+Date: Mon, 9 Mar 2015 15:37:12 -0700
+Subject: [PATCH 072/126] CDH-25867 - Hive on Spark fails when spark.master is
+ set to local
+
+---
+ ql/pom.xml |    1 +
+ 1 file changed, 1 insertion(+)
+
+diff --git a/ql/pom.xml b/ql/pom.xml
+index 921a96c..b205610 100644
+--- a/ql/pom.xml
++++ b/ql/pom.xml
+@@ -451,6 +451,7 @@
+       <groupId>org.apache.spark</groupId>
+       <artifactId>spark-core_${scala.binary.version}</artifactId>
+       <version>${spark.version}</version>
++      <optional>true</optional>
+     </dependency>
+     <!-- Following have only one version, which is cdh.hadoop.version -->
+     <dependency>
+-- 
+1.7.9.5
+

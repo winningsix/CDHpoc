@@ -1,0 +1,37 @@
+From 5cad32c4ff0a60f22462cbc597416ad74c35ca8f Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 28 Jul 2014 18:16:57 -0700
+Subject: [PATCH 10/93] CLOUDERA-BUILD. Update to CDH avro version.
+
+---
+ parquet-avro/pom.xml |    1 -
+ pom.xml              |    1 +
+ 2 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-avro/pom.xml b/parquet-avro/pom.xml
+index 3e0e489..a44f70b 100644
+--- a/parquet-avro/pom.xml
++++ b/parquet-avro/pom.xml
+@@ -15,7 +15,6 @@
+   <url>https://github.com/Parquet/parquet-mr</url>
+ 
+   <properties>
+-    <avro.version>1.7.6</avro.version>
+   </properties>
+ 
+   <dependencies>
+diff --git a/pom.xml b/pom.xml
+index e51ceac..c5c9f19 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -116,6 +116,7 @@
+     <pig.version>${cdh.pig.version}</pig.version>
+     <thrift.version>${cdh.thrift.version}</thrift.version>
+     <protobuf.version>${cdh.protobuf.version}</protobuf.version>
++    <avro.version>${cdh.avro.version}</avro.version>
+   </properties>
+ 
+   <modules>
+-- 
+1.7.0.4
+

@@ -1,0 +1,33 @@
+From 2be528e2533ed2645cbd407f47071b4de3ce95b2 Mon Sep 17 00:00:00 2001
+From: julien <julien@twitter.com>
+Date: Thu, 28 Aug 2014 10:35:19 -0700
+Subject: [PATCH 25/93] PARQUET-80: upgrade semver plugin version to 0.9.27
+
+To include the fix in:
+https://github.com/jeluard/semantic-versioning/pull/39
+
+Author: julien <julien@twitter.com>
+
+Closes #46 from julienledem/upgrade_semver_plugin and squashes the following commits:
+
+30e7247 [julien] upgrade semver plugin version to 0.9.27
+---
+ pom.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 4a958c8..8bf0e42 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -217,7 +217,7 @@
+             <dependency>
+               <groupId>org.semver</groupId>
+               <artifactId>enforcer-rule</artifactId>
+-              <version>0.9.23</version>
++              <version>0.9.27</version>
+             </dependency>
+           </dependencies>
+           <!--
+-- 
+1.7.0.4
+

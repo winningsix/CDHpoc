@@ -1,0 +1,26 @@
+From 5ee6d69592bd77d5be33ffe5b419a93631a92775 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <blue@apache.org>
+Date: Tue, 30 Sep 2014 17:00:50 -0700
+Subject: [PATCH 32/93] CLOUDERA-BUILD. Enable parquet-scrooge module.
+
+---
+ pom.xml |    2 --
+ 1 files changed, 0 insertions(+), 2 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index e2b2c27..3988fa5 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -132,9 +132,7 @@
+     <module>parquet-pig</module>
+     <module>parquet-pig-bundle</module>
+     <module>parquet-protobuf</module>
+-    <!--
+     <module>parquet-scrooge</module>
+-    -->
+     <module>parquet-thrift</module>
+     <module>parquet-test-hadoop2</module>
+     <module>parquet-hadoop-bundle</module>
+-- 
+1.7.0.4
+

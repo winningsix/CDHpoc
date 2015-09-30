@@ -1,0 +1,25 @@
+From b665f08cfc77469b337a492676c7cbff43d13383 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Sun, 27 Jul 2014 15:01:06 -0700
+Subject: [PATCH 05/93] CLOUDERA-BUILD. Update to parquet-format 2.1.0-cdh5.
+
+---
+ pom.xml |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 28c6908..5027827 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -109,7 +109,7 @@
+     <shade.prefix>parquet</shade.prefix>
+     <hadoop.version>${cdh.hadoop.version}</hadoop.version>
+     <cascading.version>2.5.3</cascading.version>
+-    <parquet.format.version>2.1.0</parquet.format.version>
++    <parquet.format.version>${cdh.parquet-format.version}</parquet.format.version>
+     <log4j.version>1.2.17</log4j.version>
+     <previous.version>1.4.0</previous.version>
+     <thrift.executable>thrift</thrift.executable>
+-- 
+1.7.0.4
+

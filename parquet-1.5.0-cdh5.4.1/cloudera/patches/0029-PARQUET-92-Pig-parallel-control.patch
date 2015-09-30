@@ -1,0 +1,65 @@
+From 5d750fb03446f1c7e6bb20da3b6cc182794cb472 Mon Sep 17 00:00:00 2001
+From: Daniel Weeks <dweeks@netflix.com>
+Date: Mon, 22 Sep 2014 11:21:20 -0700
+Subject: [PATCH 29/93] PARQUET-92: Pig parallel control
+
+The parallelism for reading footers was fixed at '5', which isn't optimal for using pig with S3.  Just adding a property to adjust the parallelism.
+
+JIRA: https://issues.apache.org/jira/browse/PARQUET-92
+
+Author: Daniel Weeks <dweeks@netflix.com>
+
+Closes #57 from dcw-netflix/pig-parallel-control and squashes the following commits:
+
+e49087c [Daniel Weeks] Update ParquetFileReader.java
+ec4f8ca [Daniel Weeks] Added configurable control of parallelism
+d37a6de [Daniel Weeks] Resetting pom to main
+0c1572e [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+98c6607 [Daniel Weeks] Merge remote-tracking branch 'upstream/master'
+96ba602 [Daniel Weeks] Disabled projects that don't compile
+---
+ .../java/parquet/hadoop/ParquetFileReader.java     |    7 +++++--
+ 1 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
+index 2a2f054..edc5da5 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/ParquetFileReader.java
+@@ -74,6 +74,8 @@ public class ParquetFileReader implements Closeable {
+ 
+   private static final Log LOG = Log.getLog(ParquetFileReader.class);
+ 
++  public static String PARQUET_READ_PARALLELISM = "parquet.metadata.read.parallelism";
++
+   private static ParquetMetadataConverter parquetMetadataConverter = new ParquetMetadataConverter();
+ 
+   /**
+@@ -120,7 +122,7 @@ public class ParquetFileReader implements Closeable {
+ 
+     Map<Path, Footer> cache = new HashMap<Path, Footer>();
+     try {
+-      List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(5, summaries);
++      List<Map<Path, Footer>> footersFromSummaries = runAllInParallel(configuration.getInt(PARQUET_READ_PARALLELISM, 5), summaries);
+       for (Map<Path, Footer> footers : footersFromSummaries) {
+         cache.putAll(footers);
+       }
+@@ -150,6 +152,7 @@ public class ParquetFileReader implements Closeable {
+   }
+ 
+   private static <T> List<T> runAllInParallel(int parallelism, List<Callable<T>> toRun) throws ExecutionException {
++    LOG.info("Initiating action with parallelism: " + parallelism);
+     ExecutorService threadPool = Executors.newFixedThreadPool(parallelism);
+     try {
+       List<Future<T>> futures = new ArrayList<Future<T>>();
+@@ -185,7 +188,7 @@ public class ParquetFileReader implements Closeable {
+       });
+     }
+     try {
+-      return runAllInParallel(5, footers);
++      return runAllInParallel(configuration.getInt(PARQUET_READ_PARALLELISM, 5), footers);
+     } catch (ExecutionException e) {
+       throw new IOException("Could not read footer: " + e.getMessage(), e.getCause());
+     }
+-- 
+1.7.0.4
+

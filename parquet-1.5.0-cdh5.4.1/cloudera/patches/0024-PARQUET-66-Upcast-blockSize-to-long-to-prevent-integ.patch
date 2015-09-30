@@ -1,0 +1,30 @@
+From 2606d36b3e8e03170c5c7167885a7109cdfb61cb Mon Sep 17 00:00:00 2001
+From: Eric Snyder <snyderep@gmail.com>
+Date: Wed, 20 Aug 2014 14:09:38 -0700
+Subject: [PATCH 24/93] PARQUET-66: Upcast blockSize to long to prevent integer overflow.
+
+Author: Eric Snyder <snyderep@gmail.com>
+
+Closes #33 from snyderep/master and squashes the following commits:
+
+c99802e [Eric Snyder] PARQUET-66: Upcast blockSize to long to prevent integer overflow.
+---
+ .../hadoop/InternalParquetRecordWriter.java        |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+index c0a66a8..15e9f59 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordWriter.java
+@@ -139,7 +139,7 @@ class InternalParquetRecordWriter<T> {
+   private void flushStore()
+       throws IOException {
+     LOG.info(format("Flushing mem store to file. allocated memory: %,d", store.allocatedSize()));
+-    if (store.allocatedSize() > 3 * blockSize) {
++    if (store.allocatedSize() > 3 * (long) blockSize) {
+       LOG.warn("Too much memory used: " + store.memUsageString());
+     }
+     w.startBlock(recordCount);
+-- 
+1.7.0.4
+

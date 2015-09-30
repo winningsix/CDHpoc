@@ -1,0 +1,34 @@
+From eade9b66e885d986d3a766fa093881927697750e Mon Sep 17 00:00:00 2001
+From: Wolfgang Hoschek <whoschek@cloudera.com>
+Date: Thu, 11 Dec 2014 14:01:27 -0800
+Subject: [PATCH 54/93] PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+
+PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+
+Author: Wolfgang Hoschek <whoschek@cloudera.com>
+
+Closes #93 from whoschek/PARQUET-145-3 and squashes the following commits:
+
+52a6acb [Wolfgang Hoschek] PARQUET-145 InternalParquetRecordReader.close() should not throw an exception if initialization has failed
+---
+ .../hadoop/InternalParquetRecordReader.java        |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java
+index 536da79..a859423 100644
+--- a/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java
++++ b/parquet-hadoop/src/main/java/parquet/hadoop/InternalParquetRecordReader.java
+@@ -129,7 +129,9 @@ class InternalParquetRecordReader<T> {
+   }
+ 
+   public void close() throws IOException {
+-    reader.close();
++    if (reader != null) {
++      reader.close();
++    }
+   }
+ 
+   public Void getCurrentKey() throws IOException, InterruptedException {
+-- 
+1.7.0.4
+

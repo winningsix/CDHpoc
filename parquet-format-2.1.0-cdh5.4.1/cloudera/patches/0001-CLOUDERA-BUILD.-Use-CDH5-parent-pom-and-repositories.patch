@@ -1,0 +1,99 @@
+From e319db54e2e2767d3d8d47a699941cfd1e6c5705 Mon Sep 17 00:00:00 2001
+From: Ryan Blue <rblue@cloudera.com>
+Date: Mon, 28 Jul 2014 09:19:33 -0700
+Subject: [PATCH 1/9] CLOUDERA-BUILD. Use CDH5 parent pom and repositories.
+
+---
+ pom.xml |   60 ++++++++++++++++++++++++++++++++++++++++++------------------
+ 1 files changed, 42 insertions(+), 18 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 1d55777..b513eaa 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -1,9 +1,16 @@
+ <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+   <modelVersion>4.0.0</modelVersion>
+ 
++  <parent>
++    <groupId>com.cloudera.cdh</groupId>
++    <artifactId>cdh-root</artifactId>
++    <version>5.2.0-SNAPSHOT</version>
++    <relativePath></relativePath><!-- no parent resolution -->
++  </parent>
++
+   <groupId>com.twitter</groupId>
+   <artifactId>parquet-format</artifactId>
+-  <version>2.1.0</version>
++  <version>2.1.0-cdh5.2.0-SNAPSHOT</version>
+   <packaging>jar</packaging>
+ 
+   <name>parquet format metadata</name>
+@@ -34,30 +41,47 @@
+     </developer>
+   </developers>
+ 
+-  <distributionManagement>
+-    <snapshotRepository>
+-      <id>sonatype-nexus-snapshots</id>
+-      <name>Sonatype OSS</name>
+-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+-    </snapshotRepository>
++  <repositories>
+     <repository>
+-      <id>sonatype-nexus-staging</id>
+-      <name>Nexus Release Repository</name>
+-      <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
++      <id>cdh.releases.repo</id>
++      <url>https://repository.cloudera.com/content/groups/cdh-releases-rcs</url>
++      <name>CDH Releases Repository</name>
++      <snapshots>
++      <enabled>false</enabled>
++      </snapshots>
+     </repository>
+-  </distributionManagement>
+-
+-  <repositories>
+     <repository>
+-      <id>sonatype-nexus-snapshots</id>
+-      <url>https://oss.sonatype.org/content/repositories/snapshots</url>
++      <id>cdh.snapshots.repo</id>
++      <url>https://repository.cloudera.com/content/repositories/snapshots</url>
++      <name>CDH Snapshots Repository</name>
++      <snapshots>
++      <enabled>true</enabled>
++      </snapshots>
+       <releases>
+-        <enabled>false</enabled>
++      <enabled>false</enabled>
+       </releases>
++    </repository>
++    <repository>
++      <id>datanucleus</id>
++      <url>http://www.datanucleus.org/downloads/maven2</url>
++      <name>Datanucleus</name>
+       <snapshots>
+-        <enabled>true</enabled>
++      <enabled>false</enabled>
+       </snapshots>
+-     </repository>
++    </repository>
++    <repository>
++      <id>java.net repository</id>
++      <url>http://download.java.net/maven/2</url>
++      <snapshots>
++      <enabled>false</enabled>
++    </snapshots>
++    </repository>
++    <repository>
++      <id>cdh.thirdparty.repo</id>
++      <url>https://repository.cloudera.com/content/repositories/third-party</url>
++      <name>Cloudera Third Party Repository</name>
++      <snapshots><enabled>false</enabled></snapshots>
++    </repository>
+   </repositories>
+ 
+   <!-- this is needed for maven-thrift-plugin, would like to remove this.
+-- 
+1.7.0.4
+

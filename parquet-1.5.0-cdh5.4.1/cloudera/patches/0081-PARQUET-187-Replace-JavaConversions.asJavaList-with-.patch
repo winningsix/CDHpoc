@@ -1,0 +1,32 @@
+From 06d8bb6e31e0f7267d41c335ca9bea22bb2175ef Mon Sep 17 00:00:00 2001
+From: Colin Marc <colinmarc@gmail.com>
+Date: Wed, 4 Mar 2015 12:49:50 -0800
+Subject: [PATCH 81/93] PARQUET-187: Replace JavaConversions.asJavaList with JavaConversions.seqAsJavaList
+
+The former was removed in 2.11, but the latter exists in 2.9, 2.10 and 2.11. With this change, I can build on 2.11 without any issue.
+
+Author: Colin Marc <colinmarc@gmail.com>
+
+Closes #121 from colinmarc/build-211 and squashes the following commits:
+
+8a29319 [Colin Marc] Replace JavaConversions.asJavaList with JavaConversions.seqAsJavaList.
+---
+ .../parquet/scrooge/ScroogeStructConverter.java    |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/parquet-scrooge/src/main/java/parquet/scrooge/ScroogeStructConverter.java b/parquet-scrooge/src/main/java/parquet/scrooge/ScroogeStructConverter.java
+index 02ab250..1c2013c 100644
+--- a/parquet-scrooge/src/main/java/parquet/scrooge/ScroogeStructConverter.java
++++ b/parquet-scrooge/src/main/java/parquet/scrooge/ScroogeStructConverter.java
+@@ -262,7 +262,7 @@ public class ScroogeStructConverter {
+     Object cObject = companionObjectClass.getField("MODULE$").get(null);
+     Method listMethod = companionObjectClass.getMethod("list", new Class[]{});
+     Object result = listMethod.invoke(cObject, null);
+-    return JavaConversions.asJavaList((Seq)result);
++    return JavaConversions.seqAsJavaList((Seq)result);
+   }
+ 
+   public ThriftType convertEnumTypeField(ThriftStructField f) {
+-- 
+1.7.0.4
+

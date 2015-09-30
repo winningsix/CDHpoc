@@ -1,0 +1,39 @@
+From 6a0cd4cd2cdc93bef1e0f46a47b8c8dd24b81c5e Mon Sep 17 00:00:00 2001
+From: asingh <asingh@cloudera.com>
+Date: Mon, 23 Feb 2015 11:25:58 -0800
+Subject: [PATCH 70/93] CDH-25325: Parquet - Build all C5 components with -source/-target 1.7
+
+---
+ pom.xml |    9 ++++-----
+ 1 files changed, 4 insertions(+), 5 deletions(-)
+
+diff --git a/pom.xml b/pom.xml
+index 564b71a..5a98f39 100644
+--- a/pom.xml
++++ b/pom.xml
+@@ -99,9 +99,8 @@
+ 
+   <properties>
+     <javaVersion>1.7</javaVersion>
+-    <targetJavaVersion>1.6</targetJavaVersion>
+-    <maven.compiler.source>1.6</maven.compiler.source>
+-    <maven.compiler.target>${targetJavaVersion}</maven.compiler.target>
++    <maven.compiler.source>1.7</maven.compiler.source>
++    <maven.compiler.target>1.7</maven.compiler.target>
+     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+     <github.global.server>github</github.global.server>
+     <maven-jar-plugin.version>2.4</maven-jar-plugin.version>
+@@ -384,8 +383,8 @@
+         <version>2.0.2</version>
+         <configuration>
+           <argLine>-XX:MaxPermSize=256m</argLine>
+-          <source>1.6</source>
+-          <target>${targetJavaVersion}</target>
++          <source>${maven.compiler.source}</source>
++          <target>${maven.compiler.target}</target>
+           <encoding>UTF-8</encoding>
+         </configuration>
+       </plugin>
+-- 
+1.7.0.4
+
